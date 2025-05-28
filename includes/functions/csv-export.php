@@ -30,13 +30,23 @@ echo "\xEF\xBB\xBF"; // BOM: forzo la crittografia UTF per evitare di impallarci
 
 $output = fopen('php://output', 'w');
 
-// Nomi colonne
-fputcsv($output, ['Lead_ID', 'Nome', 'Cognome', 'Email', 'Telefono', 'Status', 'Creato il', 'Messaggio'], ';');
+fputcsv($output, [
+    'Lead_ID', 
+    'Nome', 
+    'Cognome', 
+    'Email', 
+    'Telefono', 
+    'Status', 
+    'Creato il', 
+    'Origine',
+    'Tipologia',
+    'Messaggio'
+], ';');
 
-// Recupero i lead con lo status corretto per tipologia di cliente 1-2
 $stmt = $conn->prepare("
     SELECT l.id, p.name, p.surname, p.email, l.phone, l.message, 
-           sl.label as status_label, l.created_at, HEX(l.iv) as iv
+           sl.label as status_label, l.created_at, HEX(l.iv) as iv,
+           l.lead_source_url, l.lead_type
     FROM leads l
     JOIN personas p ON l.personas_id = p.id
     LEFT JOIN status_labels sl ON l.status_id = sl.leads_status_id AND sl.clients_type = ?
@@ -55,10 +65,25 @@ $stmt_key->bind_result($encryption_key);
 $stmt_key->fetch();
 $stmt_key->close();
 
-// Scrittura csv
+// Determino la tipologia se i lead inseriti sono più vecchi delle modifiche del 28.05.2025
+function determineLeadType($lead_source_url, $stored_lead_type) {
+    if (!empty($stored_lead_type)) {
+        return $stored_lead_type;
+    }
+    
+    if (!empty($lead_source_url) && preg_match('/:\/\/[^\/]+\/gad/i', $lead_source_url)) {
+        return 'Google ADS';
+    }
+    
+    return 'Semplice/Organico';
+}
+
 while ($row = $result->fetch_assoc()) {
     $decryptedPhone = decryptData($row['phone'], $row['iv'], $encryption_key);
     $decryptedMessage = str_replace("\n", " ", decryptData($row['message'], $row['iv'], $encryption_key));
+    
+    $origine = $row['lead_source_url'] ?: 'Non disponibile';
+    $tipologia = determineLeadType($row['lead_source_url'], $row['lead_type']);
 
     fputcsv($output, [
         $row['id'],
@@ -66,8 +91,10 @@ while ($row = $result->fetch_assoc()) {
         $row['surname'],
         $row['email'],
         $decryptedPhone,
-        $row['status_label'] ?: 'null', // nessun valore valido, rimando a null
+        $row['status_label'] ?: 'null',
         strftime("%d %b %Y - %H:%M", strtotime($row['created_at'])),
+        $origine,
+        $tipologia,
         $decryptedMessage
     ], ';');
 }

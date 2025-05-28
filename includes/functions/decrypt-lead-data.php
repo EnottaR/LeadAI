@@ -20,7 +20,6 @@ if (!$data || !isset($data['lead_id'])) {
 
 $lead_id = intval($data['lead_id']);
 
-// Verifica che il lead appartenga all'utente loggato
 $stmt = $conn->prepare("SELECT l.phone, l.message, HEX(l.iv) as iv, c.encryption_key 
                         FROM leads l 
                         JOIN clients c ON l.clients_id = c.id 
@@ -36,7 +35,6 @@ if (!$lead) {
     exit;
 }
 
-// Decripta i dati
 $decryptedPhone = decryptData($lead['phone'], $lead['iv'], $lead['encryption_key']);
 $decryptedMessage = decryptData($lead['message'], $lead['iv'], $lead['encryption_key']);
 

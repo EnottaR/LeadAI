@@ -18,10 +18,10 @@ $current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $offset = ($current_page - 1) * $leads_per_page;
 
 // Parametri filtri
-$filter_name = isset($_GET['filter_name']) ? trim($_GET['filter_name']) : '';
-$filter_status = isset($_GET['filter_status']) ? intval($_GET['filter_status']) : '';
-$filter_month = isset($_GET['filter_month']) ? intval($_GET['filter_month']) : '';
-$filter_year = isset($_GET['filter_year']) ? intval($_GET['filter_year']) : '';
+$filtro_nome = isset($_GET['filtro_nome']) ? trim($_GET['filtro_nome']) : '';
+$filtro_status = isset($_GET['filtro_status']) ? intval($_GET['filtro_status']) : '';
+$filtro_mese = isset($_GET['filtro_mese']) ? intval($_GET['filtro_mese']) : '';
+$filtro_anno = isset($_GET['filtro_anno']) ? intval($_GET['filtro_anno']) : '';
 
 $stmt = $conn->prepare("SELECT encryption_key, type FROM clients WHERE id = ?");
 $stmt->bind_param("i", $client_id);
@@ -46,9 +46,9 @@ $params = [$client_id];
 $param_types = "i";
 
 // Filtraggio per Nome / Cognome
-if (!empty($filter_name)) {
+if (!empty($filtro_nome)) {
     $where_conditions[] = "(p.name LIKE ? OR p.surname LIKE ? OR CONCAT(p.name, ' ', p.surname) LIKE ?)";
-    $search_term = "%{$filter_name}%";
+    $search_term = "%{$filtro_nome}%";
     $params[] = $search_term;
     $params[] = $search_term;
     $params[] = $search_term;
@@ -56,25 +56,25 @@ if (!empty($filter_name)) {
 }
 
 // Filtraggio per status
-if (!empty($filter_status)) {
+if (!empty($filtro_status)) {
     $where_conditions[] = "l.status_id = ?";
-    $params[] = $filter_status;
+    $params[] = $filtro_status;
     $param_types .= "i";
 }
 
 // Filtraggio per mese + anno
-if (!empty($filter_month) && !empty($filter_year)) {
+if (!empty($filtro_mese) && !empty($filtro_anno)) {
     $where_conditions[] = "YEAR(l.created_at) = ? AND MONTH(l.created_at) = ?";
-    $params[] = $filter_year;
-    $params[] = $filter_month;
+    $params[] = $filtro_anno;
+    $params[] = $filtro_mese;
     $param_types .= "ii";
-} elseif (!empty($filter_year)) {
+} elseif (!empty($filtro_anno)) {
     $where_conditions[] = "YEAR(l.created_at) = ?";
-    $params[] = $filter_year;
+    $params[] = $filtro_anno;
     $param_types .= "i";
-} elseif (!empty($filter_month)) {
+} elseif (!empty($filtro_mese)) {
     $where_conditions[] = "MONTH(l.created_at) = ?";
-    $params[] = $filter_month;
+    $params[] = $filtro_mese;
     $param_types .= "i";
 }
 
@@ -95,7 +95,7 @@ $total_pages = ceil($total_leads / $leads_per_page);
 // Query principale per i filtri
 $main_query = "
     SELECT l.id, p.name, p.surname, p.email, l.phone, l.message, l.status_id, l.created_at, 
-           HEX(l.iv) as iv, l.ip
+           HEX(l.iv) as iv, l.ip, l.lead_source_url, l.lead_type
     FROM leads l
     JOIN personas p ON l.personas_id = p.id
     WHERE {$where_clause}
@@ -121,10 +121,10 @@ function generatePaginationLinks($current_page, $total_pages, $max_links = 5) {
     $links = [];
     
     $filter_params = [];
-    if (!empty($_GET['filter_name'])) $filter_params['filter_name'] = $_GET['filter_name'];
-    if (!empty($_GET['filter_status'])) $filter_params['filter_status'] = $_GET['filter_status'];
-    if (!empty($_GET['filter_month'])) $filter_params['filter_month'] = $_GET['filter_month'];
-    if (!empty($_GET['filter_year'])) $filter_params['filter_year'] = $_GET['filter_year'];
+    if (!empty($_GET['filtro_nome'])) $filter_params['filtro_nome'] = $_GET['filtro_nome'];
+    if (!empty($_GET['filtro_status'])) $filter_params['filtro_status'] = $_GET['filtro_status'];
+    if (!empty($_GET['filtro_mese'])) $filter_params['filtro_mese'] = $_GET['filtro_mese'];
+    if (!empty($_GET['filtro_anno'])) $filter_params['filtro_anno'] = $_GET['filtro_anno'];
     
     $base_url = '?' . http_build_query($filter_params);
     $separator = empty($filter_params) ? '?' : '&';
@@ -218,21 +218,21 @@ $months = [
                     <form method="GET" action="leads.php" class="filter-form" id="filter-form">
                         <div class="filter-row">
                             <div class="filter-group">
-                                <label for="filter_name">Nome o Cognome</label>
+                                <label for="filtro_nome">Nome o Cognome</label>
                                 <input type="text" 
-                                       id="filter_name" 
-                                       name="filter_name" 
+                                       id="filtro_nome" 
+                                       name="filtro_nome" 
                                        placeholder="Scrivi un nome oppure un cognome"
-                                       value="<?= htmlspecialchars($filter_name) ?>"
+                                       value="<?= htmlspecialchars($filtro_nome) ?>"
                                        class="filter-input">
                             </div>
                             
                             <div class="filter-group">
-                                <label for="filter_status">Status</label>
-                                <select id="filter_status" name="filter_status" class="filter-select">
+                                <label for="filtro_status">Status</label>
+                                <select id="filtro_status" name="filtro_status" class="filter-select">
                                     <option value="">Tutti gli status</option>
                                     <?php foreach ($status_options as $id => $label): ?>
-                                        <option value="<?= $id ?>" <?= ($id == $filter_status) ? 'selected' : '' ?>>
+                                        <option value="<?= $id ?>" <?= ($id == $filtro_status) ? 'selected' : '' ?>>
                                             <?= htmlspecialchars($label) ?>
                                         </option>
                                     <?php endforeach; ?>
@@ -240,11 +240,11 @@ $months = [
                             </div>
                             
                             <div class="filter-group">
-                                <label for="filter_month">Mese</label>
-                                <select id="filter_month" name="filter_month" class="filter-select">
+                                <label for="filtro_mese">Mese</label>
+                                <select id="filtro_mese" name="filtro_mese" class="filter-select">
                                     <option value="">Tutti i mesi</option>
                                     <?php foreach ($months as $num => $name): ?>
-                                        <option value="<?= $num ?>" <?= ($num == $filter_month) ? 'selected' : '' ?>>
+                                        <option value="<?= $num ?>" <?= ($num == $filtro_mese) ? 'selected' : '' ?>>
                                             <?= $name ?>
                                         </option>
                                     <?php endforeach; ?>
@@ -252,11 +252,11 @@ $months = [
                             </div>
                             
                             <div class="filter-group">
-                                <label for="filter_year">Anno</label>
-                                <select id="filter_year" name="filter_year" class="filter-select">
+                                <label for="filtro_anno">Anno</label>
+                                <select id="filtro_anno" name="filtro_anno" class="filter-select">
                                     <option value="">Tutti gli anni</option>
                                     <?php foreach ($years as $year): ?>
-                                        <option value="<?= $year ?>" <?= ($year == $filter_year) ? 'selected' : '' ?>>
+                                        <option value="<?= $year ?>" <?= ($year == $filtro_anno) ? 'selected' : '' ?>>
                                             <?= $year ?>
                                         </option>
                                     <?php endforeach; ?>
@@ -271,50 +271,50 @@ $months = [
                         </div>
                     </form>
                     
-                    <?php if (!empty($filter_name) || !empty($filter_status) || !empty($filter_month) || !empty($filter_year)): ?>
+                    <?php if (!empty($filtro_nome) || !empty($filtro_status) || !empty($filtro_mese) || !empty($filtro_anno)): ?>
                         <div class="active-filters">
-                            <?php if (!empty($filter_name)): ?>
+                            <?php if (!empty($filtro_nome)): ?>
                                 <span class="filter-tag">
-                                    Nome: "<?= htmlspecialchars($filter_name) ?>"
+                                    Nome: "<?= htmlspecialchars($filtro_nome) ?>"
                                     <?php 
                                     $remove_params = $_GET;
-                                    unset($remove_params['filter_name']);
+                                    unset($remove_params['filtro_nome']);
                                     $remove_url = '?' . http_build_query(array_filter($remove_params));
                                     if ($remove_url === '?') $remove_url = 'leads.php';
                                     ?>
                                     <a href="<?= $remove_url ?>" class="remove-filter">×</a>
                                 </span>
                             <?php endif; ?>
-                            <?php if (!empty($filter_status)): ?>
+                            <?php if (!empty($filtro_status)): ?>
                                 <span class="filter-tag">
-                                    Status: <?= htmlspecialchars($status_options[$filter_status]) ?>
+                                    Status: <?= htmlspecialchars($status_options[$filtro_status]) ?>
                                     <?php 
                                     $remove_params = $_GET;
-                                    unset($remove_params['filter_status']);
+                                    unset($remove_params['filtro_status']);
                                     $remove_url = '?' . http_build_query(array_filter($remove_params));
                                     if ($remove_url === '?') $remove_url = 'leads.php';
                                     ?>
                                     <a href="<?= $remove_url ?>" class="remove-filter">×</a>
                                 </span>
                             <?php endif; ?>
-                            <?php if (!empty($filter_month)): ?>
+                            <?php if (!empty($filtro_mese)): ?>
                                 <span class="filter-tag">
-                                    Mese: <?= $months[$filter_month] ?>
+                                    Mese: <?= $months[$filtro_mese] ?>
                                     <?php 
                                     $remove_params = $_GET;
-                                    unset($remove_params['filter_month']);
+                                    unset($remove_params['filtro_mese']);
                                     $remove_url = '?' . http_build_query(array_filter($remove_params));
                                     if ($remove_url === '?') $remove_url = 'leads.php';
                                     ?>
                                     <a href="<?= $remove_url ?>" class="remove-filter">×</a>
                                 </span>
                             <?php endif; ?>
-                            <?php if (!empty($filter_year)): ?>
+                            <?php if (!empty($filtro_anno)): ?>
                                 <span class="filter-tag">
-                                    Anno: <?= $filter_year ?>
+                                    Anno: <?= $filtro_anno ?>
                                     <?php 
                                     $remove_params = $_GET;
-                                    unset($remove_params['filter_year']);
+                                    unset($remove_params['filtro_anno']);
                                     $remove_url = '?' . http_build_query(array_filter($remove_params));
                                     if ($remove_url === '?') $remove_url = 'leads.php';
                                     ?>
@@ -370,7 +370,7 @@ $months = [
                                 <tr>
                                     <td colspan="8" style="text-align: center; padding: 40px; color: var(--secondary-color);">
                                         <i class="fas fa-search" style="font-size: 48px; margin-bottom: 15px; opacity: 0.3;"></i><br>
-                                        <?php if (!empty($filter_name) || !empty($filter_status) || !empty($filter_month) || !empty($filter_year)): ?>
+                                        <?php if (!empty($filtro_nome) || !empty($filtro_status) || !empty($filtro_mese) || !empty($filtro_anno)): ?>
                                             Nessun lead corrisponde ai filtri selezionati.<br>
                                             <button onclick="clearAllFilters()" style="margin-top: 10px; background: var(--link-color-active-bg); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
                                                 Rimuovi tutti i filtri
@@ -430,7 +430,6 @@ $months = [
     <script src="assets/js/leads.js"></script>
     
     <script>
-        // Auto-submit del form quando si cambia un filtro
         document.addEventListener('DOMContentLoaded', function() {
             const filterSection = document.getElementById('filter-section');
             const toggleButton = document.getElementById('toggle-filters');
@@ -438,10 +437,8 @@ $months = [
             const filterInputs = document.querySelectorAll('#filter-form input, #filter-form select');
             let timeout;
             
-            // Gestione toggle filtri
             if (toggleButton && filterSection) {
-                // Controlla se ci sono filtri attivi all'avvio
-                const hasActiveFilters = <?= (!empty($filter_name) || !empty($filter_status) || !empty($filter_month) || !empty($filter_year)) ? 'true' : 'false' ?>;
+                const hasActiveFilters = <?= (!empty($filtro_nome) || !empty($filtro_status) || !empty($filtro_mese) || !empty($filtro_anno)) ? 'true' : 'false' ?>;
                 
                 if (hasActiveFilters) {
                     filterSection.style.display = 'block';
@@ -455,7 +452,6 @@ $months = [
                     e.stopPropagation();
                     
                     if (filterSection.style.display === 'none' || !filterSection.style.display) {
-                        // Mostra filtri
                         filterSection.style.display = 'block';
                         filterSection.style.opacity = '0';
                         filterSection.style.transform = 'translateY(-10px)';
@@ -470,7 +466,6 @@ $months = [
                         toggleButton.innerHTML = '<i class="fa-solid fa-sliders"></i> Nascondi Filtri <span class="filter-count" id="filter-count"></span>';
                         updateFilterCount();
                     } else {
-                        // Nascondi filtri
                         filterSection.style.transition = 'all 0.3s ease';
                         filterSection.style.opacity = '0';
                         filterSection.style.transform = 'translateY(-10px)';
@@ -486,7 +481,6 @@ $months = [
                 });
             }
             
-            // Funzione per aggiornare il conteggio filtri
             function updateFilterCount() {
                 const activeFilters = document.querySelectorAll('.filter-tag').length;
                 const countElement = document.getElementById('filter-count');
@@ -501,7 +495,6 @@ $months = [
                 }
             }
             
-            // Auto-submit per input filtri
             filterInputs.forEach(input => {
                 if (input && input.type === 'text') {
                     input.addEventListener('input', function() {
@@ -517,8 +510,7 @@ $months = [
                 }
             });
             
-            // Pulsante per pulire tutti i filtri
-            const clearBtn = document.getElementById('clear-filters');
+            const clearBtn = document.getElementById('pulisci-filtri');
             if (clearBtn) {
                 clearBtn.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -526,22 +518,18 @@ $months = [
                 });
             }
             
-            // Aggiorna URL per il download CSV con i filtri attuali
             const downloadBtn = document.getElementById('download-csv');
             if (downloadBtn) {
                 downloadBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     
-                    // Costruisci URL con i filtri attuali
                     const params = new URLSearchParams(window.location.search);
                     const csvUrl = 'includes/functions/csv-export.php?' + params.toString();
                     
-                    // Apri il download
                     window.location.href = csvUrl;
                 });
             }
             
-            // Inizializza il conteggio filtri
             updateFilterCount();
         });
         

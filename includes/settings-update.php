@@ -12,7 +12,6 @@ if (!isset($_SESSION['loggedin']) || !isset($_SESSION['user_id'])) {
 $client_id = $_SESSION['user_id'];
 $data = json_decode(file_get_contents('php://input'), true);
 
-// Per la gestione dell'aggiornamento password
 if (!empty($data['password'])) {
     $new_password = trim($data['password']);
     
@@ -21,7 +20,6 @@ if (!empty($data['password'])) {
         exit;
     }
     
-    // Verifica se la password è uguale a quella attuale
     $stmt = $conn->prepare("SELECT password FROM clients WHERE id = ?");
     $stmt->bind_param("i", $client_id);
     $stmt->execute();
@@ -29,7 +27,6 @@ if (!empty($data['password'])) {
     $stmt->fetch();
     $stmt->close();
     
-    // Verifica se la nuova password corrisponde a quella esistente
     if (password_verify($new_password, $current_hashed_password)) {
         echo json_encode(["status" => "error", "message" => "⚠️ La nuova password non può essere uguale a quella attuale."]);
         exit;

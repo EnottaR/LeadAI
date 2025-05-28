@@ -2,11 +2,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Elementi del DOM
     const filterForm = document.getElementById('filter-form');
-    const filterNameInput = document.getElementById('filter_name');
-    const filterStatusSelect = document.getElementById('filter_status');
-    const filterMonthSelect = document.getElementById('filter_month');
-    const filterYearSelect = document.getElementById('filter_year');
-    const clearFiltersBtn = document.getElementById('clear-filters');
+    const filterNameInput = document.getElementById('filtro_nome');
+    const filterStatusSelect = document.getElementById('filtro_status');
+    const filterMonthSelect = document.getElementById('filtro_mese');
+    const filterYearSelect = document.getElementById('filtro_anno');
+    const clearFiltersBtn = document.getElementById('pulisci-filtri');
     const resultsCount = document.querySelector('.results-count');
     const leadsTable = document.querySelector('.leads-table');
     

@@ -55,7 +55,7 @@ if (!$success) {
     exit;
 }
 
-// Invio mail + template se lo status viene cambiato in Contattato senza risposta
+// QUESTO ANDRA' RIMOSSO, FUNZIONE NON NECESSARIA IN APP
 if ($status_id == 2) {
     $subject = "📌 Ti abbiamo contattato!";
     $message = "Ciao $lead_name,\n\n";
@@ -63,8 +63,8 @@ if ($status_id == 2) {
     $message .= "Se hai ancora bisogno di informazioni, rispondi a questa email.\n\n";
     $message .= "Cordiali saluti,\nIl Team LeadAI";
 
-    $headers = "From: no-reply@tuodominio.com\r\n";
-    $headers .= "Reply-To: no-reply@tuodominio.com\r\n";
+    $headers = "From: no-reply@leadai.com\r\n";
+    $headers .= "Reply-To: no-reply@leadai.com\r\n";
     $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
 
     mail($lead_email, $subject, $message, $headers);

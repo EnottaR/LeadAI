@@ -11,7 +11,7 @@ function getClientIP() {
     if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
         // necessario: rilevo più indirizzi IP? Prendo solo il primo per valido
         $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-0    } else {
+    } else {
         // Nessun proxy, vado con l'IP remoto
         $ip = $_SERVER['REMOTE_ADDR'];
     }
@@ -59,6 +59,20 @@ function getBrowserInfo() {
     return $browser . ' su ' . $os;
 }
 
+// NUOVA FUNZIONE: Determina la tipologia del lead basata sull'URL di origine
+function getLeadType($referer_url) {
+    if (empty($referer_url)) {
+        return 'Semplice/Organico';
+    }
+    
+    // Controlla se l'URL contiene /gad dopo il dominio
+    if (preg_match('/\.com\/gad/i', $referer_url)) {
+        return 'Google ADS';
+    }
+    
+    return 'Semplice/Organico';
+}
+
 $name = $_POST['name'] ?? '';
 $surname = $_POST['surname'] ?? '';
 $email = $_POST['email'] ?? '';
@@ -68,6 +82,9 @@ $ip = getClientIP();
 $browser_info = getBrowserInfo();
 $lead_source = $_SERVER['HTTP_REFERER'] ?? 'Non disponibile'; // URL completo della pagina
 $clients_id = $_POST['clients_id'] ?? ''; // clients_id passato dal form
+
+// NUOVA VARIABILE: Determina la tipologia del lead
+$lead_type = getLeadType($lead_source);
 
 // verifico se il cliente esiste in base al clients_id
 $queryClient = "SELECT id, encryption_key, email FROM clients WHERE id = :clients_id LIMIT 1";
@@ -128,7 +145,7 @@ if ($client) {
     $stmtWebsite = $pdo->prepare($queryWebsite);
 
     // Usa la wildcard per LIKE nel parametro, li wrappo con % intorno al valore,
-	// questo nel caso per qualche assurdo motivo l'url mi viene passato "smontato"
+    // questo nel caso per qualche assurdo motivo l'url mi viene passato "smontato"
     $likeUrl = '%' . $refererUrl . '%';
 
     $stmtWebsite->bindParam(':url', $likeUrl); // il parametro è legato dalla wildcard
@@ -137,8 +154,9 @@ if ($client) {
     $website = $stmtWebsite->fetch(PDO::FETCH_ASSOC);
 
     if ($website) {
-        $insertLeadQuery = "INSERT INTO leads (phone, message, ip, status_id, created_at, clients_id, personas_id, websites_id, iv)
-                            VALUES (:phone, :message, :ip, 1, NOW(), :clients_id, :personas_id, :websites_id, :iv)";
+        // MODIFICA: Aggiungo i nuovi campi lead_source_url e lead_type
+        $insertLeadQuery = "INSERT INTO leads (phone, message, ip, status_id, created_at, clients_id, personas_id, websites_id, iv, lead_source_url, lead_type)
+                            VALUES (:phone, :message, :ip, 1, NOW(), :clients_id, :personas_id, :websites_id, :iv, :lead_source_url, :lead_type)";
         $stmtLead = $pdo->prepare($insertLeadQuery);
 
         $stmtLead->bindParam(':phone', $encryptedPhone);
@@ -147,21 +165,25 @@ if ($client) {
         $stmtLead->bindParam(':clients_id', $client['id']);
         $stmtLead->bindParam(':personas_id', $personas_id);
         $stmtLead->bindParam(':websites_id', $website['id']);
-        $stmtLead->bindParam(':iv', $iv);  // memorizza anche l'IV
+        $stmtLead->bindParam(':iv', $iv); // memorizza anche l'IV
+        $stmtLead->bindParam(':lead_source_url', $lead_source); // NUOVO CAMPO
+        $stmtLead->bindParam(':lead_type', $lead_type); // NUOVO CAMPO
 
         if ($stmtLead->execute()) {
             echo "lead inserito con successo!";
             
             // EMAIL DI NOTIFICA AL PROPRIETARIO DELL'ACCOUNT
-			// Dovrebbe funzionare correttamente, sto effettuando test ma non mi capacito:
-			// mg-adv.com ha un mailer? E' una cosa abbastanza comune che mi ritrovo con i siti in production,
-			// alcuni form a volte non caricano l'header della mail e vengono bloccati oppure finiscono in spam
+            // Dovrebbe funzionare correttamente, sto effettuando test ma non mi capacito:
+            // mg-adv.com ha un mailer? E' una cosa abbastanza comune che mi ritrovo con i siti in production,
+            // alcuni form a volte non caricano l'header della mail e vengono bloccati oppure finiscono in spam
             $client_email = $client['email'];
             $website_name = $website['name'];
             
-            $subject = "Nuovo LEAD - " . $website_name;
+            $subject = "Nuovo LEAD - " . $website_name . " (" . $lead_type . ")"; // Aggiungo tipologia nel subject
             
             $email_body = "Questi i dati inseriti nel modulo presente alla pagina " . $lead_source . " da utente con indirizzo IP: " . $ip . " e browser/sistema operativo " . $browser_info . "\n\n";
+            $email_body .= "🎯 TIPOLOGIA LEAD: " . $lead_type . "\n"; // NUOVA RIGA
+            $email_body .= "🌐 URL ORIGINE: " . $lead_source . "\n\n"; // NUOVA RIGA
             $email_body .= "Dati Inseriti:\n";
             $email_body .= "lead_source: " . $lead_source . "\n";
             $email_body .= "first_name: " . $name . "\n";
@@ -175,7 +197,7 @@ if ($client) {
             $email_body .= "Per gestire questo lead, accedi al tuo pannello di controllo.";
             
             // Creo degli header per non mandarli in spam
-			// utili in production, ma utilissimi anche post release
+            // utili in production, ma utilissimi anche post release
             $headers = array();
             $headers[] = "MIME-Version: 1.0";
             $headers[] = "Content-type: text/plain; charset=UTF-8";

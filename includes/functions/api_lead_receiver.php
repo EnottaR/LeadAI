@@ -87,7 +87,6 @@ try {
     exit;
 }
 
-// Logging
 function logActivity($message, $level = 'INFO') {
     $log_dir = __DIR__ . '/logs';
     if (!is_dir($log_dir)) {
@@ -102,7 +101,6 @@ function logActivity($message, $level = 'INFO') {
     error_log($logEntry, 3, $log_dir . '/lead_api.log');
 }
 
-// Funzioni da add_lead.php
 function getClientIP() {
     if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
         $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
@@ -157,11 +155,22 @@ function getBrowserInfo() {
     return $browser . ' su ' . $os;
 }
 
-// Ricezione dati (supporto sia form-data che JSON)
+function getLeadType($referer_url) {
+    if (empty($referer_url)) {
+        return 'Semplice/Organico';
+    }
+    
+    // Controlla se l'URL contiene /gad dopo il dominio
+    if (preg_match('/:\/\/[^\/]+\/gad/i', $referer_url)) {
+        return 'Google ADS';
+    }
+    
+    return 'Semplice/Organico';
+}
+
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);
 
-// Se non è JSON, prova con POST normale
 if (!$data && !empty($_POST)) {
     $data = $_POST;
 }
@@ -177,7 +186,6 @@ if (!$data) {
     exit;
 }
 
-// Validazione campi obbligatori
 $required_fields = ['name', 'surname', 'email', 'phone', 'message', 'clients_id'];
 $missing_fields = [];
 
@@ -207,7 +215,9 @@ $phone = htmlspecialchars(trim($data['phone']));
 $message = htmlspecialchars(trim($data['message']));
 $clients_id = intval($data['clients_id']);
 
-// Validazione email
+$lead_source = $_SERVER['HTTP_REFERER'] ?? 'API Call';
+$lead_type = getLeadType($lead_source);
+
 if (!$email) {
     http_response_code(400);
     echo json_encode([
@@ -219,7 +229,6 @@ if (!$email) {
     exit;
 }
 
-// Validazione lunghezza campi
 if (strlen($name) > 100 || strlen($surname) > 100) {
     http_response_code(400);
     echo json_encode([
@@ -241,7 +250,6 @@ if (strlen($message) > 2000) {
 }
 
 try {
-    // Verifica cliente
     $queryClient = "SELECT id, encryption_key, email FROM clients WHERE id = :clients_id LIMIT 1";
     $stmtClient = $pdo->prepare($queryClient);
     $stmtClient->bindParam(':clients_id', $clients_id);
@@ -259,13 +267,11 @@ try {
         exit;
     }
     
-    // Crittografia dati sensibili
     $encryption_key = $client['encryption_key'];
     $iv = openssl_random_pseudo_bytes(16);
     $encryptedPhone = openssl_encrypt($phone, 'aes-256-cbc', $encryption_key, 0, $iv);
     $encryptedMessage = openssl_encrypt($message, 'aes-256-cbc', $encryption_key, 0, $iv);
     
-    // Gestione persona (esistente o nuova)
     $queryPersonas = "SELECT id FROM personas WHERE email = :email LIMIT 1";
     $stmtPersonas = $pdo->prepare($queryPersonas);
     $stmtPersonas->bindParam(':email', $email);
@@ -290,7 +296,6 @@ try {
         }
     }
     
-    // Per API, usa il primo website disponibile del cliente
     $queryWebsite = "SELECT id, name FROM websites WHERE clients_id = :clients_id LIMIT 1";
     $stmtWebsite = $pdo->prepare($queryWebsite);
     $stmtWebsite->bindParam(':clients_id', $clients_id);
@@ -308,9 +313,8 @@ try {
         exit;
     }
     
-    // Inserisco lead
     $ip = getClientIP();
-    $insertLeadQuery = "INSERT INTO leads (phone, message, ip, status_id, created_at, clients_id, personas_id, websites_id, iv) VALUES (:phone, :message, :ip, 1, NOW(), :clients_id, :personas_id, :websites_id, :iv)";
+    $insertLeadQuery = "INSERT INTO leads (phone, message, ip, status_id, created_at, clients_id, personas_id, websites_id, iv, lead_source_url, lead_type) VALUES (:phone, :message, :ip, 1, NOW(), :clients_id, :personas_id, :websites_id, :iv, :lead_source_url, :lead_type)";
     $stmtLead = $pdo->prepare($insertLeadQuery);
     $stmtLead->bindParam(':phone', $encryptedPhone);
     $stmtLead->bindParam(':message', $encryptedMessage);
@@ -319,20 +323,21 @@ try {
     $stmtLead->bindParam(':personas_id', $personas_id);
     $stmtLead->bindParam(':websites_id', $website['id']);
     $stmtLead->bindParam(':iv', $iv);
+    $stmtLead->bindParam(':lead_source_url', $lead_source);
+    $stmtLead->bindParam(':lead_type', $lead_type);
     
     if ($stmtLead->execute()) {
         $lead_id = $pdo->lastInsertId();
         
-        // Email notifica al cliente
         $client_email = $client['email'];
         $website_name = $website['name'];
         $browser_info = getBrowserInfo();
-        $lead_source = $_SERVER['HTTP_REFERER'] ?? 'API Call';
         
-        $subject = "🚀 Nuovo Lead ricevuto via API - " . $website_name;
+        $subject = "🚀 Nuovo Lead ricevuto via API - " . $website_name . " (" . $lead_type . ")"; // Aggiungo tipologia
         $email_body = "Hai ricevuto un nuovo lead tramite API:\n\n";
         $email_body .= "📋 DATI LEAD:\n";
         $email_body .= "━━━━━━━━━━━━━━━━━━━━\n";
+        $email_body .= "🎯 TIPOLOGIA: $lead_type\n"; // NUOVA RIGA
         $email_body .= "👤 Nome: $name $surname\n";
         $email_body .= "📧 Email: $email\n";
         $email_body .= "📱 Telefono: $phone\n";
@@ -366,7 +371,6 @@ try {
             logActivity("Errore invio email a: $client_email per lead ID: $lead_id", 'WARNING');
         }
         
-        // Risposta affermativa
         $response = [
             'success' => true,
             'message' => 'Lead salvato con successo',
@@ -375,12 +379,13 @@ try {
                 'timestamp' => date('Y-m-d H:i:s'),
                 'client_id' => $clients_id,
                 'persona_id' => $personas_id,
+                'lead_type' => $lead_type,
                 'email_sent' => $mail_sent
             ]
         ];
         
         echo json_encode($response);
-        logActivity("Lead salvato con successo - ID: $lead_id, Email: $email, Cliente: $clients_id");
+        logActivity("Lead salvato con successo - ID: $lead_id, Email: $email, Cliente: $clients_id, Tipo: $lead_type");
         
     } else {
         http_response_code(500);

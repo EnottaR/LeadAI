@@ -159,8 +159,10 @@ $status_stmt->close();
 
 <div class="project-boxes jsGridView">
     <?php
+    // MODIFICA: Aggiungo i nuovi campi alla query per la dashboard
     $stmt = $conn->prepare("
-        SELECT l.id, p.name, p.surname, l.status_id, l.created_at, HEX(l.iv) as iv, l.message
+        SELECT l.id, p.name, p.surname, l.status_id, l.created_at, HEX(l.iv) as iv, l.message,
+               l.lead_source_url, l.lead_type
         FROM leads l
         JOIN personas p ON l.personas_id = p.id
         WHERE l.clients_id = ?
@@ -185,6 +187,17 @@ $status_stmt->close();
         $status_class = $status_classes[$lead['status_id']] ?? 'status-default';
         $status_label = htmlspecialchars($status_options[$lead['status_id']] ?? 'null');
         $decryptedMessage = htmlspecialchars(decryptData($lead['message'], $lead['iv'], $encryption_key));
+        
+        // NUOVA LOGICA: Determino la tipologia del lead
+        $lead_type = $lead['lead_type'] ?? 'Semplice/Organico';
+        
+        // Se non è presente nel DB, determino dalla URL (per lead vecchi)
+        if (empty($lead_type) && !empty($lead['lead_source_url'])) {
+            $lead_type = (preg_match('/\.com\/gad/i', $lead['lead_source_url'])) ? 'Google ADS' : 'Semplice/Organico';
+        }
+        
+        $type_icon = ($lead_type === 'Google ADS') ? '🎯' : '🌱';
+        $type_color = ($lead_type === 'Google ADS') ? '#4285f4' : '#34a853';
     ?>
         <div class="project-box-wrapper" data-lead-id="<?= $lead['id']; ?>">
             <div class="project-box <?= $status_class; ?>">
@@ -193,21 +206,20 @@ $status_stmt->close();
                     setlocale(LC_TIME, 'it_IT.UTF-8');
                     ?>
                     <span><?= strftime("%d %B %Y", strtotime($lead['created_at'])); ?></span>
-
+                    <!-- NUOVA SEZIONE: Badge tipologia lead -->
+                    <span style="font-size: 12px; color: <?= $type_color; ?>; margin-left: 10px;" title="<?= $lead_type; ?>">
+                        <?= $type_icon; ?>
+                    </span>
                 </div>
                 <div class="project-box-content-header">
                     <p class="box-content-header"><?= htmlspecialchars($lead['name'] . ' ' . strtoupper(substr($lead['surname'], 0, 1)) . '.'); ?></p>
                     <?php
-    $shortMessage = (strlen($decryptedMessage) > 30) 
-        ? substr($decryptedMessage, 0, 30) . "..." 
-        : $decryptedMessage;
-?>
-<p class="box-content-subheader"><?= $shortMessage; ?></p>
+                    $shortMessage = (strlen($decryptedMessage) > 30) 
+                        ? substr($decryptedMessage, 0, 30) . "..." 
+                        : $decryptedMessage;
+                    ?>
+                    <p class="box-content-subheader"><?= $shortMessage; ?></p>
                 </div>
-                <!-- <div class="box-progress-wrapper">
-                    <p class="box-progress-header">Status</p>
-                    <p class="box-progress-percentage"><?= $status_label; ?>
-                </div> -->
                 <div class="project-box-footer">
                     <div class="days-left"><?= $status_label; ?></div>
                 </div>

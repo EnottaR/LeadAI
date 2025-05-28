@@ -81,6 +81,20 @@ function detectOS() {
     return os;
 }
 
+// Funzione per determinare l'origine del lead
+function getLeadTypeFromUrl(url) {
+    if (!url || url === 'Non disponibile') {
+        return 'Semplice/Organico';
+    }
+    
+    // Check sull'URL se contiene /gad dopo il .com
+    if (url.match(/:\/\/[^\/]+\/gad/i)) {
+        return 'Google ADS';
+    }
+    
+    return 'Semplice/Organico';
+}
+
 function openOffCanvas(leadData) {
     // SICUREZZA
     fetch('includes/functions/decrypt-lead-data.php', {
@@ -97,9 +111,11 @@ function openOffCanvas(leadData) {
             return;
         }
         
-        // Rilevo le informazioni del browser e li simulo in lead_source
         const browserInfo = detectBrowser() + ' su ' + detectOS();
-        const leadSource = window.location.origin + '/leadAI/contact_form.php'; // fonte simulata, non abbiamo sul db i campi appositi
+        
+        const leadSource = leadData.lead_source_url || (window.location.origin + '/leadAI/contact_form.php');
+        
+        const leadType = leadData.lead_type || getLeadTypeFromUrl(leadSource);
         
         let content = `
             <div class="lead-detail-section">
@@ -114,6 +130,12 @@ function openOffCanvas(leadData) {
                     <div class="data-item">
                         <span class="data-label">Fonte del lead (lead_source):</span>
                         <span class="data-value">${leadSource}</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Tipologia Lead:</span>
+                        <span class="data-value" style="font-weight: bold; color: ${leadType === 'Google ADS' ? '#4285f4' : '#34a853'};">
+                            ${leadType === 'Google ADS' ? 'Google ADS' : 'Semplice/Organico'}
+                        </span>
                     </div>
                     <div class="data-item">
                         <span class="data-label">Nome (first_name):</span>
@@ -142,6 +164,12 @@ function openOffCanvas(leadData) {
                 </div>
             </div>`;
 
+        const offcanvasTitle = document.querySelector('.offcanvas-header h3');
+        if (offcanvasTitle) {
+            const typeIcon = leadType === 'Google ADS' ? '' : '';
+            offcanvasTitle.innerHTML = `Dettagli Lead <span style="font-size: 14px; color: ${leadType === 'Google ADS' ? '#4285f4' : '#34a853'}; border: 2px solid ${leadType === 'Google ADS' ? '#4285f4' : '#34a853'}; margin-left: 10px; padding: 7px 10px; border-radius: 20px;">${typeIcon} ${leadType}</span>`;
+        }
+
         document.getElementById('offcanvasContent').innerHTML = content;
         document.getElementById('leadOffCanvas').classList.add('active');
         document.getElementById('offcanvasOverlay').classList.add('active');
@@ -155,4 +183,9 @@ function openOffCanvas(leadData) {
 function closeOffCanvas() {
     document.getElementById('leadOffCanvas').classList.remove('active');
     document.getElementById('offcanvasOverlay').classList.remove('active');
+    
+    const offcanvasTitle = document.querySelector('.offcanvas-header h3');
+    if (offcanvasTitle) {
+        offcanvasTitle.innerHTML = 'Dettagli Lead';
+    }
 }
