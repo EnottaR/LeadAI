@@ -334,8 +334,7 @@ $months = [
                         </div>
                     <?php endif; ?>
 
-                </div>
-
+                </div>	
                 <div class="table-container">
                     <table class="leads-table">
                         <thead>

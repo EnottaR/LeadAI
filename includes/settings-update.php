@@ -12,6 +12,7 @@ if (!isset($_SESSION['loggedin']) || !isset($_SESSION['user_id'])) {
 $client_id = $_SESSION['user_id'];
 $data = json_decode(file_get_contents('php://input'), true);
 
+// Aggiornamento PASSWORD
 if (!empty($data['password'])) {
     $new_password = trim($data['password']);
     
@@ -44,6 +45,28 @@ if (!empty($data['password'])) {
     exit;
 }
 
+// Aggiornamento EMAIL
+if (!empty($data['email'])) {
+    $new_email = filter_var($data['email'], FILTER_SANITIZE_EMAIL);
+    
+    if (!filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(["status" => "error", "message" => "⚠️ Inserisci un indirizzo email valido."]);
+        exit;
+    }
+
+    $stmt = $conn->prepare("UPDATE clients SET email = ? WHERE id = ?");
+    $stmt->bind_param("si", $new_email, $client_id);
+
+    if ($stmt->execute()) {
+        $_SESSION['email'] = $new_email;
+        echo json_encode(["status" => "success", "message" => "<i class='fas fa-check-circle'></i> Email aggiornata con successo!"]);
+    } else {
+        echo json_encode(["status" => "error", "message" => "⚠️ Errore durante l'aggiornamento dell'email."]);
+    }
+    exit;
+}
+
+// Aggiornamento AZIENDA
 if (!empty($data['company'])) {
     $company_name = filter_var($data['company'], FILTER_SANITIZE_STRING);
     $stmt = $conn->prepare("UPDATE clients SET company = ? WHERE id = ?");
@@ -58,8 +81,9 @@ if (!empty($data['company'])) {
     exit;
 }
 
-if (!empty($data['name'])) {
-    $website_name = filter_var($data['name'], FILTER_SANITIZE_STRING);
+// Aggiornamento NOME SITO (website name)
+if (!empty($data['website_name'])) {
+    $website_name = filter_var($data['website_name'], FILTER_SANITIZE_STRING);
 
     $stmt = $conn->prepare("UPDATE websites SET name = ? WHERE clients_id = ?");
     $stmt->bind_param("si", $website_name, $client_id);
@@ -72,8 +96,9 @@ if (!empty($data['name'])) {
     exit;
 }
 
-if (!empty($data['url'])) {
-    $website_url = filter_var($data['url'], FILTER_SANITIZE_URL);
+// Aggiornamento URL SITO (website url)
+if (!empty($data['website_url'])) {
+    $website_url = filter_var($data['website_url'], FILTER_SANITIZE_URL);
 
     if (!filter_var($website_url, FILTER_VALIDATE_URL)) {
         echo json_encode(["status" => "error", "message" => "⚠️ Inserisci un URL valido."]);
@@ -90,6 +115,8 @@ if (!empty($data['url'])) {
     }
     exit;
 }
+
+error_log("Dati ricevuti in settings-update.php: " . json_encode($data));
 
 echo json_encode(["status" => "error", "message" => "⚠️ Nessun dato valido ricevuto."]);
 $conn->close();

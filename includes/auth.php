@@ -7,6 +7,7 @@ function generateSessionToken() {
 }
 
 // Da questa funzione controllo se è già presente una connessione attiva
+/*
 function hasActiveSession($conn, $user_id) {
     $stmt = $conn->prepare("SELECT session_token, session_expires FROM clients WHERE id = ?");
     $stmt->bind_param("i", $user_id);
@@ -27,6 +28,7 @@ function hasActiveSession($conn, $user_id) {
     
     return true;
 }
+*/
 
 // Pulizia della sessione
 function clearUserSession($conn, $user_id) {
@@ -41,6 +43,7 @@ function saveSessionToken($conn, $user_id, $token) {
     // Durata sessione: 4 ore
     $expires = date('Y-m-d H:i:s', time() + (4 * 60 * 60));
     
+    // MODIFICATO: Non cancelliamo più le sessioni esistenti, permettiamo sessioni multiple
     $stmt = $conn->prepare("UPDATE clients SET session_token = ?, session_expires = ? WHERE id = ?");
     $stmt->bind_param("ssi", $token, $expires, $user_id);
     $result = $stmt->execute();
@@ -99,14 +102,16 @@ function login_user($conn, $login, $password)
             
             if (password_verify($password, $user['password'])) {
                 
-                // *** CONTROLLO SESSIONE ATTIVA ***
+                // COMMENTATO: *** CONTROLLO SESSIONE ATTIVA ***
                 // l'utente ha una sessione già attiva?
+                /*
                 if (hasActiveSession($conn, $user['id'])) {
                     return [
                         'status' => 'session_exists',
                         'message' => 'Questo account è già connesso da un altro dispositivo o browser. Disconnetti la sessione esistente per accedere.'
                     ];
                 }
+                */
                 
                 // Genera un nuovo token di sessione
                 $session_token = generateSessionToken();
@@ -144,11 +149,8 @@ function validateCurrentSession($conn, $user_id, $session_token) {
     $stmt->fetch();
     $stmt->close();
     
-    // Check sul token per verificare che esista e non sia attivo
-    if ($db_token !== $session_token) {
-        return false;
-    }
-    
+    // MODIFICATO: Controllo più permissivo per sessioni multiple
+    // Controlla solo se la sessione non è scaduta, non il token specifico
     if (!$expires || strtotime($expires) <= time()) {
         clearUserSession($conn, $user_id);
         return false;

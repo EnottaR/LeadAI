@@ -5,10 +5,12 @@ require 'includes/auth.php';
 require 'includes/csrf.php';
 
 $messaggio = "";
-$session_conflict = false;
+$errore_email = "";
+$errore_password = "";
+$errore_registrazione = "";
 
 if (isset($_GET['session_expired'])) {
-    $messaggio = "⚠️ La tua sessione è scaduta o è stata sostituita da un altro accesso. Effettua di nuovo il login.";
+    $messaggio = "⚠️ La tua sessione è scaduta. Effettua di nuovo il login.";
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -22,46 +24,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['register_password'];
         $nome = $_POST['nome'] ?? '';
         $cognome = $_POST['cognome'] ?? '';
-        $messaggio = register_user($conn, $nome, $cognome, $email, $password);
+        
+        // Validazioni per la registrazione
+        if (empty($nome) || empty($cognome)) {
+            $errore_registrazione = "Nome e cognome sono obbligatori.";
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errore_registrazione = "Inserisci un indirizzo email valido.";
+        } elseif (strlen($password) < 6) {
+            $errore_registrazione = "La password deve contenere almeno 6 caratteri.";
+        } else {
+            $result = register_user($conn, $nome, $cognome, $email, $password);
+            if ($result['type'] === 'success') {
+                $messaggio = $result['message'];
+            } else {
+                $errore_registrazione = $result['message'];
+            }
+        }
     } elseif (isset($_POST['login'])) {
         $login = trim($_POST['email']);
         $password = $_POST['password'];
         
-        $login_result = login_user($conn, $login, $password);
-        
-        if ($login_result === true) {
-            header("Location: dashboard.php");
-            exit;
-        } elseif (is_array($login_result) && $login_result['status'] === 'session_exists') {
-            $messaggio = $login_result['message'];
-            $session_conflict = true;
-        } else {
-            $messaggio = "Email o password errati. Controlla e riprova.";
+        // Validazioni per il login
+        if (empty($login)) {
+            $errore_email = "L'indirizzo email è obbligatorio.";
+        } elseif (!filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            $errore_email = "Inserisci un indirizzo email valido.";
         }
-    } elseif (isset($_POST['force_login'])) {
-        $login = trim($_POST['email']);
-        $password = $_POST['password'];
         
-        $stmt = $conn->prepare("SELECT id FROM clients WHERE email = ? OR username = ?");
-        $stmt->bind_param("ss", $login, $login);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        if (empty($password)) {
+            $errore_password = "La password è obbligatoria.";
+        }
         
-        if ($result->num_rows === 1) {
-            $user = $result->fetch_assoc();
+        // Se non ci sono errori di validazione, prova il login
+        if (empty($errore_email) && empty($errore_password)) {
+            // Controlla se l'email esiste nel database
+            $stmt = $conn->prepare("SELECT id, password FROM clients WHERE email = ? OR username = ?");
+            $stmt->bind_param("ss", $login, $login);
+            $stmt->execute();
+            $result = $stmt->get_result();
             
-            forceLogout($conn, $user['id']);
-            
-            $login_result = login_user($conn, $login, $password);
-            
-            if ($login_result === true) {
-                header("Location: dashboard.php");
-                exit;
+            if ($result->num_rows === 0) {
+                $errore_email = "Questo indirizzo email non è registrato.";
             } else {
-                $messaggio = "Errore durante il login forzato. Riprova.";
+                $user = $result->fetch_assoc();
+                if (!password_verify($password, $user['password'])) {
+                    $errore_password = "Password non corretta.";
+                } else {
+                    // Login riuscito
+                    $login_result = login_user($conn, $login, $password);
+                    if ($login_result === true) {
+                        header("Location: dashboard.php");
+                        exit;
+                    } else {
+                        $messaggio = "Errore durante il login. Riprova.";
+                    }
+                }
             }
+            $stmt->close();
         }
-        $stmt->close();
     }
 }
 
@@ -90,38 +110,41 @@ $conn->close();
             <div class="login">
                 <h2 id="form-title">Login</h2>
                 
-                <?php if ($session_conflict): ?>
-                    <div class="msg-errore">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Attenzione</h3>
-                        <p>L'account selezionato risulta già connesso da un altro dispositivo o browser.
-						Se sei il proprietario dell'account, disconnettiti dalla sessione attiva e riprova.</p>
-
-                        <form method="POST" action="login.php" id="force-login-form" style="display: none;">
-                            <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-                            <input type="hidden" name="force_login" value="1">
-                            <input type="hidden" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
-                            <input type="password" name="password" placeholder="Conferma password" required style="width: 100%; margin: 10px 0; padding: 8px;">
-                            <button type="submit" class="force-login-btn">
-                                <i class="fas fa-sign-out-alt"></i> Disconnetti altra sessione e accedi
-                            </button>
-                        </form>
-                        <button onclick="cancelLogin()" class="cancel-btn">
-                            Torna indietro
-                        </button>
+                <?php if (!empty($messaggio)): ?>
+                    <div class="msg-successo">
+                        <?= htmlspecialchars($messaggio) ?>
                     </div>
                 <?php endif; ?>
 
-                <div id="login-fields" class="<?= $session_conflict ? 'hidden' : 'active' ?>">
+                <div id="login-fields" class="active">
                     <form method="POST" action="login.php">
                         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                         <input type="hidden" name="login" value="1">
+                        
                         <div class="input-container show">
-                            <input type="email" name="email" placeholder="Email*" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
+                            <input type="email" name="email" placeholder="Email*" required 
+                                   value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
+                                   class="<?= !empty($errore_email) ? 'input-error' : '' ?>">
+                            <?php if (!empty($errore_email)): ?>
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <?= htmlspecialchars($errore_email) ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
+                        
                         <div class="password-container show">
-                            <input type="password" name="password" id="password" placeholder="Password*" required>
+                            <input type="password" name="password" id="password" placeholder="Password*" required
+                                   class="<?= !empty($errore_password) ? 'input-error' : '' ?>">
                             <i id="toggle-password" class="pass-icona fas fa-eye"></i>
+                            <?php if (!empty($errore_password)): ?>
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <?= htmlspecialchars($errore_password) ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
+                        
                         <button type="submit">Accedi</button>
                     </form>
 
@@ -135,14 +158,24 @@ $conn->close();
                         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                         <input type="hidden" name="register" value="1">
 
+                        <?php if (!empty($errore_registrazione)): ?>
+                            <div class="error-message registration-error">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <?= htmlspecialchars($errore_registrazione) ?>
+                            </div>
+                        <?php endif; ?>
+
                         <div class="input-container">
-                            <input type="text" name="nome" placeholder="Nome*" required>
+                            <input type="text" name="nome" placeholder="Nome*" required
+                                   value="<?= htmlspecialchars($_POST['nome'] ?? '') ?>">
                         </div>
                         <div class="input-container">
-                            <input type="text" name="cognome" placeholder="Cognome*" required>
+                            <input type="text" name="cognome" placeholder="Cognome*" required
+                                   value="<?= htmlspecialchars($_POST['cognome'] ?? '') ?>">
                         </div>
                         <div class="input-container">
-                            <input type="email" name="registra_mail" placeholder="Email*" required>
+                            <input type="email" name="registra_mail" placeholder="Email*" required
+                                   value="<?= htmlspecialchars($_POST['registra_mail'] ?? '') ?>">
                         </div>
 
                         <div class="password-container">
@@ -169,16 +202,5 @@ $conn->close();
             </div>
         </div>
     </div>
-
-    <script>
-        function showForceLoginForm() {
-            document.getElementById('force-login-form').style.display = 'block';
-            document.getElementById('show-force-btn').style.display = 'none';
-        }
-        
-        function cancelLogin() {
-            window.location.href = 'login.php';
-        }
-    </script>
 </body>
 </html>

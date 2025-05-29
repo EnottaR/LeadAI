@@ -881,7 +881,7 @@ a {
     order: 3;
     padding-top: 0;
     flex-direction: column;
-    justify-content: flex-start;
+    justify-content: space-evenly;
 }
 
 .project-boxes.jsListView .project-box-footer:after {
@@ -921,7 +921,7 @@ a {
 .project-box-header {
     display: flex;
     align-items: center;
-    justify-content: end;
+    justify-content: flex-start;
     margin-bottom: 16px;
     color: var(--main-color);
 }
@@ -1021,6 +1021,28 @@ a {
     height: 1px;
 }
 
+.lead-type-badge {
+    background: rgba(255, 255, 255, 0.8);
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-weight: 600;
+    font-size: 12px;
+    border: 1px solid currentColor;
+    display: inline-block;
+}
+
+.lead-date {
+    background-color: rgba(255, 255, 255, 0.6);
+    font-size: 11px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    padding: 4px 12px;
+    font-weight: 600;
+    opacity: 0.8;
+    color: #333;
+	align-content: center;
+}
+
 .participants {
     display: flex;
     align-items: center;
@@ -1058,6 +1080,7 @@ a {
     flex-shrink: 0;
     padding: 6px 16px;
     font-weight: 700;
+	text-align: center;
 }
 
 .switch-mode.active .luna {
@@ -1671,6 +1694,8 @@ input#event-end-time:focus {
     }
 }
 
+
+
 /* TABELLA LEAD */
 .table-container {
     width: 100%;
@@ -1976,7 +2001,6 @@ td.lead-messaggio {
 .settings-box {
   background-color: var(--projects-section);
   border-radius: 10px;
-  padding: 20px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   transition: box-shadow 0.3s ease;
 }
@@ -2970,8 +2994,14 @@ td.lead-messaggio {
 
     .projects-section-header p,
     .projects-section-header .tempo {
-        font-size: 18px;
+        font-size: 16px;
     }
+	.projects-section-header .tempo {
+		font-size: 10px;
+	}
+	#download-csv {
+		padding: 10px;
+	}
 
     .status-type {
         padding-right: 4px;

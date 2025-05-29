@@ -129,24 +129,25 @@ if ($client) {
         }
     }
 
-    // estrazione del dominio dal referer
-    $refererUrl = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST);
+    // CORREZIONE: Estrai solo il dominio per il controllo del sito web, 
+    // ma mantieni l'URL completo per lead_source_url
+    $refererDomain = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST);
     
-    if ($refererUrl) {
-        // Pulisco l'url dal www se presente
-        $refererUrl = preg_replace('/^www\./', '', $refererUrl);
+    if ($refererDomain) {
+        // Pulisco il dominio dal www se presente
+        $refererDomain = preg_replace('/^www\./', '', $refererDomain);
     } else {
         echo "errore: nessun referer trovato.";
         exit;
     }
 
-    // Controllo che il sito inserito sia di proprietà del cliente
+    // Controllo che il sito inserito sia di proprietà del cliente usando SOLO il dominio
     $queryWebsite = "SELECT id, name, url FROM websites WHERE url LIKE :url AND clients_id = :clients_id LIMIT 1";
     $stmtWebsite = $pdo->prepare($queryWebsite);
 
     // Usa la wildcard per LIKE nel parametro, li wrappo con % intorno al valore,
     // questo nel caso per qualche assurdo motivo l'url mi viene passato "smontato"
-    $likeUrl = '%' . $refererUrl . '%';
+    $likeUrl = '%' . $refererDomain . '%';
 
     $stmtWebsite->bindParam(':url', $likeUrl);
     $stmtWebsite->bindParam(':clients_id', $client['id']);
@@ -154,7 +155,7 @@ if ($client) {
     $website = $stmtWebsite->fetch(PDO::FETCH_ASSOC);
 
     if ($website) {
-        // MODIFICA: Aggiungo i nuovi campi lead_source_url e lead_type
+        // CORREZIONE: Salva l'URL COMPLETO (non solo il dominio) in lead_source_url
         $insertLeadQuery = "INSERT INTO leads (phone, message, ip, status_id, created_at, clients_id, personas_id, websites_id, iv, lead_source_url, lead_type)
                             VALUES (:phone, :message, :ip, 1, NOW(), :clients_id, :personas_id, :websites_id, :iv, :lead_source_url, :lead_type)";
         $stmtLead = $pdo->prepare($insertLeadQuery);
@@ -166,7 +167,7 @@ if ($client) {
         $stmtLead->bindParam(':personas_id', $personas_id);
         $stmtLead->bindParam(':websites_id', $website['id']);
         $stmtLead->bindParam(':iv', $iv);
-        $stmtLead->bindParam(':lead_source_url', $lead_source);
+        $stmtLead->bindParam(':lead_source_url', $lead_source); // URL COMPLETO
         $stmtLead->bindParam(':lead_type', $lead_type);
 
         if ($stmtLead->execute()) {

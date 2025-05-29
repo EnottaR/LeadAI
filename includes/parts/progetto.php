@@ -127,15 +127,15 @@ $status_stmt->close();
             </span>
         </div>
     </div>
-	    <div class="view-actions">
-			<button id="reset-order" class="view-btn" title="Ripristina ordine originale">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 2v6h6"></path>
-        <path d="M3 8C5.33333 5.33333 8.33333 4 12 4c7.3333 0 10 5.33333 10 8 0 1.3333-.6667 2.6667-2 4"></path>
-        <path d="M21 22v-6h-6"></path>
-        <path d="M21 16c-2.3333 2.6667-5.3333 4-9 4-7.3333 0-10-5.3333-10-8 0-1.3333.6667-2.6667 2-4"></path>
-    </svg>
-</button>
+    <div class="view-actions">
+        <button id="reset-order" class="view-btn" title="Ripristina ordine originale">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 2v6h6"></path>
+                <path d="M3 8C5.33333 5.33333 8.33333 4 12 4c7.3333 0 10 5.33333 10 8 0 1.3333-.6667 2.6667-2 4"></path>
+                <path d="M21 22v-6h-6"></path>
+                <path d="M21 16c-2.3333 2.6667-5.3333 4-9 4-7.3333 0-10-5.3333-10-8 0-1.3333.6667-2.6667 2-4"></path>
+            </svg>
+        </button>
         <button class="view-btn list-view" title="Visualizza a lista">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-list">
                 <line x1="8" y1="6" x2="21" y2="6" />
@@ -179,47 +179,49 @@ $status_stmt->close();
         5 => 'status-in-progress',
         6 => 'status-quote-sent',
         7 => 'status-contract-sent',
-		8 => 'status-contract-spam',
+        8 => 'status-contract-spam',
     ];
 
     foreach ($leads as $lead):
         $status_class = $status_classes[$lead['status_id']] ?? 'status-default';
         $status_label = htmlspecialchars($status_options[$lead['status_id']] ?? 'null');
         $decryptedMessage = htmlspecialchars(decryptData($lead['message'], $lead['iv'], $encryption_key));
-        
+
         // NUOVA LOGICA: Determino la tipologia del lead
         $lead_type = $lead['lead_type'] ?? 'Semplice/Organico';
-        
+
         // Se non è presente nel DB, determino dalla URL (per lead vecchi)
         if (empty($lead_type) && !empty($lead['lead_source_url'])) {
             $lead_type = (preg_match('/\.com\/gad/i', $lead['lead_source_url'])) ? 'Google ADS' : 'Semplice/Organico';
         }
-        
-        $type_icon = ($lead_type === 'Google ADS') ? 'Google ADS' : 'Semplice/Organico';
+
         $type_color = ($lead_type === 'Google ADS') ? '#4285f4' : '#34a853';
     ?>
         <div class="project-box-wrapper" data-lead-id="<?= $lead['id']; ?>">
             <div class="project-box <?= $status_class; ?>">
                 <div class="project-box-header">
-                    <?php
-                    setlocale(LC_TIME, 'it_IT.UTF-8');
-                    ?>
-                    <span><?= strftime("%d %B %Y", strtotime($lead['created_at'])); ?></span>
-                    <span style="font-size: 12px; color: <?= $type_color; ?>; margin-left: 10px;" title="<?= $lead_type; ?>">
-                        <?= $type_icon; ?>
+                    <!-- Header ora contiene solo il tipo di lead -->
+                    <span class="lead-type-badge" style="font-size: 12px; color: <?= $type_color; ?>;" title="<?= $lead_type; ?>">
+                        <?= $lead_type; ?>
                     </span>
                 </div>
                 <div class="project-box-content-header">
                     <p class="box-content-header"><?= htmlspecialchars($lead['name'] . ' ' . strtoupper(substr($lead['surname'], 0, 1)) . '.'); ?></p>
                     <?php
-                    $shortMessage = (strlen($decryptedMessage) > 30) 
-                        ? substr($decryptedMessage, 0, 30) . "..." 
+                    $shortMessage = (strlen($decryptedMessage) > 30)
+                        ? substr($decryptedMessage, 0, 30) . "..."
                         : $decryptedMessage;
                     ?>
                     <p class="box-content-subheader"><?= $shortMessage; ?></p>
                 </div>
                 <div class="project-box-footer">
                     <div class="days-left"><?= $status_label; ?></div>
+                    <div class="lead-date">
+                        <?php
+                        setlocale(LC_TIME, 'it_IT.UTF-8');
+                        ?>
+                        <?= strftime("%d %B %Y", strtotime($lead['created_at'])); ?>
+                    </div>
                 </div>
             </div>
         </div>

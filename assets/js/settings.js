@@ -134,10 +134,13 @@ document.addEventListener("DOMContentLoaded", function () {
   setupLogout();
   setupStatusUpdate();
 
+  // CORREZIONE: I parametri corretti per le chiamate
   setupEditField("edit-email-btn", "email-display", "email-edit-container", "user-email", "save-email-btn", "cancel-email-btn", "email");
   setupEditField("edit-company-btn", "company-display", "company-edit-container", "user-company", "save-company-btn", "cancel-company-btn", "company");
-  setupEditField("edit-website-name-btn", "website-name-display", "website-name-edit-container", "user-website-name", "save-website-name-btn", "cancel-website-name-btn", "name");
-  setupEditField("edit-website-url-btn", "website-url-display", "website-url-edit-container", "user-website-url", "save-website-url-btn", "cancel-website-url-btn", "url");
+  
+  // FIX: Parametri corretti per website name e url
+  setupEditField("edit-website-name-btn", "website-name-display", "website-name-edit-container", "user-website-name", "save-website-name-btn", "cancel-website-name-btn", "website_name");
+  setupEditField("edit-website-url-btn", "website-url-display", "website-url-edit-container", "user-website-url", "save-website-url-btn", "cancel-website-url-btn", "website_url");
 
 const editPasswordBtn = document.getElementById("edit-password-btn");
 const passwordEditContainer = document.getElementById("password-edit-container");
