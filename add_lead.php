@@ -148,7 +148,7 @@ if ($client) {
     // questo nel caso per qualche assurdo motivo l'url mi viene passato "smontato"
     $likeUrl = '%' . $refererUrl . '%';
 
-    $stmtWebsite->bindParam(':url', $likeUrl); // il parametro è legato dalla wildcard
+    $stmtWebsite->bindParam(':url', $likeUrl);
     $stmtWebsite->bindParam(':clients_id', $client['id']);
     $stmtWebsite->execute();
     $website = $stmtWebsite->fetch(PDO::FETCH_ASSOC);
@@ -165,9 +165,9 @@ if ($client) {
         $stmtLead->bindParam(':clients_id', $client['id']);
         $stmtLead->bindParam(':personas_id', $personas_id);
         $stmtLead->bindParam(':websites_id', $website['id']);
-        $stmtLead->bindParam(':iv', $iv); // memorizza anche l'IV
-        $stmtLead->bindParam(':lead_source_url', $lead_source); // NUOVO CAMPO
-        $stmtLead->bindParam(':lead_type', $lead_type); // NUOVO CAMPO
+        $stmtLead->bindParam(':iv', $iv);
+        $stmtLead->bindParam(':lead_source_url', $lead_source);
+        $stmtLead->bindParam(':lead_type', $lead_type);
 
         if ($stmtLead->execute()) {
             echo "lead inserito con successo!";
@@ -179,11 +179,11 @@ if ($client) {
             $client_email = $client['email'];
             $website_name = $website['name'];
             
-            $subject = "Nuovo LEAD - " . $website_name . " (" . $lead_type . ")"; // Aggiungo tipologia nel subject
+            $subject = "Nuovo LEAD - " . $website_name . " (" . $lead_type . ")";
             
             $email_body = "Questi i dati inseriti nel modulo presente alla pagina " . $lead_source . " da utente con indirizzo IP: " . $ip . " e browser/sistema operativo " . $browser_info . "\n\n";
-            $email_body .= "🎯 TIPOLOGIA LEAD: " . $lead_type . "\n"; // NUOVA RIGA
-            $email_body .= "🌐 URL ORIGINE: " . $lead_source . "\n\n"; // NUOVA RIGA
+            $email_body .= "🎯 TIPOLOGIA LEAD: " . $lead_type . "\n";
+            $email_body .= "🌐 URL ORIGINE: " . $lead_source . "\n\n";
             $email_body .= "Dati Inseriti:\n";
             $email_body .= "lead_source: " . $lead_source . "\n";
             $email_body .= "first_name: " . $name . "\n";
@@ -196,8 +196,6 @@ if ($client) {
             $email_body .= "Questo messaggio è stato generato automaticamente da LeadAI.\n";
             $email_body .= "Per gestire questo lead, accedi al tuo pannello di controllo.";
             
-            // Creo degli header per non mandarli in spam
-            // utili in production, ma utilissimi anche post release
             $headers = array();
             $headers[] = "MIME-Version: 1.0";
             $headers[] = "Content-type: text/plain; charset=UTF-8";
@@ -215,11 +213,9 @@ if ($client) {
             
             if ($mail_sent) {
                 echo "\nEmail di notifica inviata con successo a: " . $client_email;
-                // Log per debugging
                 error_log("LeadAI: Email inviata a " . $client_email . " - " . date('Y-m-d H:i:s'));
             } else {
                 echo "\nErrore nell'invio dell'email di notifica.";
-                // Log dell'errore
                 error_log("LeadAI: Errore invio email a " . $client_email . " - " . date('Y-m-d H:i:s'));
             }
             

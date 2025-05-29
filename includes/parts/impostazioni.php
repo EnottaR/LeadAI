@@ -103,7 +103,8 @@
 <div id="password-panel" class="settings-panel">
     <div class="settings-box">
         <h3>Modifica password</h3>
-        <p class="settings-desc">Ricorda di usare una combinazione sicura con lettere maiuscole, minuscole, numeri e simboli.</p>
+        <p class="settings-desc">La password viene utilizzata per accedere al tuo profilo.<br>
+			Cambiala spesso e ricorda di usare una combinazione sicura con lettere maiuscole, minuscole, numeri e simboli.</p>
         <div class="settings-column-right">
             <div class="password-container">
                 <button id="edit-password-btn" class="btn-secondary">
@@ -127,7 +128,8 @@
     <div id="email-panel" class="settings-panel">
         <div class="settings-box">
             <h3>Aggiorna indirizzo email</h3>
-			                <p class="settings-desc">Utilizzato per le comunicazioni importanti riguardanti il tuo account.</p>
+			                <p class="settings-desc">Utilizzato per le comunicazioni importanti riguardanti il tuo account<br>
+								e per ricevere notifiche sui tuoi lead.</p>
             <div class="settings-column-right">
                 <div id="email-display" style="display: flex; align-items: center;">
                     <span id="current-email">

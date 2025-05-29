@@ -159,7 +159,6 @@ $status_stmt->close();
 
 <div class="project-boxes jsGridView">
     <?php
-    // MODIFICA: Aggiungo i nuovi campi alla query per la dashboard
     $stmt = $conn->prepare("
         SELECT l.id, p.name, p.surname, l.status_id, l.created_at, HEX(l.iv) as iv, l.message,
                l.lead_source_url, l.lead_type
@@ -196,7 +195,7 @@ $status_stmt->close();
             $lead_type = (preg_match('/\.com\/gad/i', $lead['lead_source_url'])) ? 'Google ADS' : 'Semplice/Organico';
         }
         
-        $type_icon = ($lead_type === 'Google ADS') ? '🎯' : '🌱';
+        $type_icon = ($lead_type === 'Google ADS') ? 'Google ADS' : 'Semplice/Organico';
         $type_color = ($lead_type === 'Google ADS') ? '#4285f4' : '#34a853';
     ?>
         <div class="project-box-wrapper" data-lead-id="<?= $lead['id']; ?>">
@@ -206,7 +205,6 @@ $status_stmt->close();
                     setlocale(LC_TIME, 'it_IT.UTF-8');
                     ?>
                     <span><?= strftime("%d %B %Y", strtotime($lead['created_at'])); ?></span>
-                    <!-- NUOVA SEZIONE: Badge tipologia lead -->
                     <span style="font-size: 12px; color: <?= $type_color; ?>; margin-left: 10px;" title="<?= $lead_type; ?>">
                         <?= $type_icon; ?>
                     </span>

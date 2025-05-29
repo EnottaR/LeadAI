@@ -117,57 +117,58 @@ $stmt->close();
 
 setlocale(LC_TIME, 'it_IT.UTF-8');
 
-function generatePaginationLinks($current_page, $total_pages, $max_links = 5) {
+function generatePaginationLinks($current_page, $total_pages, $max_links = 5)
+{
     $links = [];
-    
+
     $filter_params = [];
     if (!empty($_GET['filtro_nome'])) $filter_params['filtro_nome'] = $_GET['filtro_nome'];
     if (!empty($_GET['filtro_status'])) $filter_params['filtro_status'] = $_GET['filtro_status'];
     if (!empty($_GET['filtro_mese'])) $filter_params['filtro_mese'] = $_GET['filtro_mese'];
     if (!empty($_GET['filtro_anno'])) $filter_params['filtro_anno'] = $_GET['filtro_anno'];
-    
-    $base_url = '?' . http_build_query($filter_params);
+
+    $base_url = http_build_query($filter_params);
     $separator = empty($filter_params) ? '?' : '&';
-    
+
     $start = max(1, $current_page - floor($max_links / 2));
     $end = min($total_pages, $start + $max_links - 1);
-    
+
     if ($end - $start + 1 < $max_links) {
         $start = max(1, $end - $max_links + 1);
     }
-    
+
     if ($current_page > 1) {
         $links[] = ['type' => 'prev', 'page' => $current_page - 1, 'text' => '‹', 'url' => $base_url . $separator . 'page=' . ($current_page - 1)];
     }
-    
+
     if ($start > 1) {
         $links[] = ['type' => 'page', 'page' => 1, 'text' => '1', 'url' => $base_url . $separator . 'page=1'];
         if ($start > 2) {
             $links[] = ['type' => 'ellipsis', 'text' => '...'];
         }
     }
-    
+
     for ($i = $start; $i <= $end; $i++) {
         $links[] = [
-            'type' => 'page', 
-            'page' => $i, 
-            'text' => $i, 
+            'type' => 'page',
+            'page' => $i,
+            'text' => $i,
             'active' => $i == $current_page,
             'url' => $base_url . $separator . 'page=' . $i
         ];
     }
-    
+
     if ($end < $total_pages) {
         if ($end < $total_pages - 1) {
             $links[] = ['type' => 'ellipsis', 'text' => '...'];
         }
         $links[] = ['type' => 'page', 'page' => $total_pages, 'text' => $total_pages, 'url' => $base_url . $separator . 'page=' . $total_pages];
     }
-    
+
     if ($current_page < $total_pages) {
         $links[] = ['type' => 'next', 'page' => $current_page + 1, 'text' => '›', 'url' => $base_url . $separator . 'page=' . ($current_page + 1)];
     }
-    
+
     return $links;
 }
 
@@ -182,9 +183,18 @@ for ($i = $current_year; $i >= ($current_year - 3); $i--) {
 
 // Array dei mesi
 $months = [
-    1 => 'Gennaio', 2 => 'Febbraio', 3 => 'Marzo', 4 => 'Aprile',
-    5 => 'Maggio', 6 => 'Giugno', 7 => 'Luglio', 8 => 'Agosto',
-    9 => 'Settembre', 10 => 'Ottobre', 11 => 'Novembre', 12 => 'Dicembre'
+    1 => 'Gennaio',
+    2 => 'Febbraio',
+    3 => 'Marzo',
+    4 => 'Aprile',
+    5 => 'Maggio',
+    6 => 'Giugno',
+    7 => 'Luglio',
+    8 => 'Agosto',
+    9 => 'Settembre',
+    10 => 'Ottobre',
+    11 => 'Novembre',
+    12 => 'Dicembre'
 ];
 ?>
 
@@ -206,27 +216,27 @@ $months = [
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="filter-section" id="filter-section" style="display: none;">
                     <div class="filter-header">
                         <h4><i class="fa-solid fa-sliders"></i> Filtra i tuoi lead per:</h4>
-                        <button type="button" id="clear-filters" class="clear-filters-btn">
+                        <button type="button" id="clear-filters" class="clear-filters-btn" onclick="clearAllFilters()">
                             <i class="fas fa-times"></i> Pulisci filtri
                         </button>
                     </div>
-                    
+
                     <form method="GET" action="leads.php" class="filter-form" id="filter-form">
                         <div class="filter-row">
                             <div class="filter-group">
                                 <label for="filtro_nome">Nome o Cognome</label>
-                                <input type="text" 
-                                       id="filtro_nome" 
-                                       name="filtro_nome" 
-                                       placeholder="Scrivi un nome oppure un cognome"
-                                       value="<?= htmlspecialchars($filtro_nome) ?>"
-                                       class="filter-input">
+                                <input type="text"
+                                    id="filtro_nome"
+                                    name="filtro_nome"
+                                    placeholder="Scrivi un nome oppure un cognome"
+                                    value="<?= htmlspecialchars($filtro_nome) ?>"
+                                    class="filter-input">
                             </div>
-                            
+
                             <div class="filter-group">
                                 <label for="filtro_status">Status</label>
                                 <select id="filtro_status" name="filtro_status" class="filter-select">
@@ -238,7 +248,7 @@ $months = [
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            
+
                             <div class="filter-group">
                                 <label for="filtro_mese">Mese</label>
                                 <select id="filtro_mese" name="filtro_mese" class="filter-select">
@@ -250,7 +260,7 @@ $months = [
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            
+
                             <div class="filter-group">
                                 <label for="filtro_anno">Anno</label>
                                 <select id="filtro_anno" name="filtro_anno" class="filter-select">
@@ -262,7 +272,7 @@ $months = [
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            
+
                             <div class="filter-group">
                                 <button type="submit" class="filter-apply-btn">
                                     <i class="fas fa-search"></i> Applica
@@ -270,13 +280,13 @@ $months = [
                             </div>
                         </div>
                     </form>
-                    
+
                     <?php if (!empty($filtro_nome) || !empty($filtro_status) || !empty($filtro_mese) || !empty($filtro_anno)): ?>
                         <div class="active-filters">
                             <?php if (!empty($filtro_nome)): ?>
                                 <span class="filter-tag">
                                     Nome: "<?= htmlspecialchars($filtro_nome) ?>"
-                                    <?php 
+                                    <?php
                                     $remove_params = $_GET;
                                     unset($remove_params['filtro_nome']);
                                     $remove_url = '?' . http_build_query(array_filter($remove_params));
@@ -288,7 +298,7 @@ $months = [
                             <?php if (!empty($filtro_status)): ?>
                                 <span class="filter-tag">
                                     Status: <?= htmlspecialchars($status_options[$filtro_status]) ?>
-                                    <?php 
+                                    <?php
                                     $remove_params = $_GET;
                                     unset($remove_params['filtro_status']);
                                     $remove_url = '?' . http_build_query(array_filter($remove_params));
@@ -300,7 +310,7 @@ $months = [
                             <?php if (!empty($filtro_mese)): ?>
                                 <span class="filter-tag">
                                     Mese: <?= $months[$filtro_mese] ?>
-                                    <?php 
+                                    <?php
                                     $remove_params = $_GET;
                                     unset($remove_params['filtro_mese']);
                                     $remove_url = '?' . http_build_query(array_filter($remove_params));
@@ -312,7 +322,7 @@ $months = [
                             <?php if (!empty($filtro_anno)): ?>
                                 <span class="filter-tag">
                                     Anno: <?= $filtro_anno ?>
-                                    <?php 
+                                    <?php
                                     $remove_params = $_GET;
                                     unset($remove_params['filtro_anno']);
                                     $remove_url = '?' . http_build_query(array_filter($remove_params));
@@ -323,9 +333,9 @@ $months = [
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
-                    
+
                 </div>
-                
+
                 <div class="table-container">
                     <table class="leads-table">
                         <thead>
@@ -389,7 +399,7 @@ $months = [
                     <div class="pagination-container">
                         <div class="pagination-info">
                             <span>
-                                Stai visualizzando i lead da <?= $offset + 1 ?> - <?= min($offset + $leads_per_page, $total_leads) ?> 
+                                Stai visualizzando i lead da <?= $offset + 1 ?> - <?= min($offset + $leads_per_page, $total_leads) ?>
                                 di <?= $total_leads ?>
                             </span>
                         </div>
@@ -398,9 +408,9 @@ $months = [
                                 <?php if ($link['type'] === 'ellipsis'): ?>
                                     <span class="pagination-ellipsis"><?= $link['text'] ?></span>
                                 <?php else: ?>
-                                    <a href="<?= $link['url'] ?>" 
-                                       class="pagination-link <?= isset($link['active']) && $link['active'] ? 'active' : '' ?> <?= $link['type'] ?>"
-                                       <?= isset($link['active']) && $link['active'] ? 'aria-current="page"' : '' ?>>
+                                    <a href="<?= $link['url'] ?>"
+                                        class="pagination-link <?= isset($link['active']) && $link['active'] ? 'active' : '' ?> <?= $link['type'] ?>"
+                                        <?= isset($link['active']) && $link['active'] ? 'aria-current="page"' : '' ?>>
                                         <?= $link['text'] ?>
                                     </a>
                                 <?php endif; ?>
@@ -428,7 +438,7 @@ $months = [
     <div id="notification-container"></div>
     <script src="assets/js/dashboard.js"></script>
     <script src="assets/js/leads.js"></script>
-    
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const filterSection = document.getElementById('filter-section');
@@ -436,32 +446,32 @@ $months = [
             const filterCount = document.getElementById('filter-count');
             const filterInputs = document.querySelectorAll('#filter-form input, #filter-form select');
             let timeout;
-            
+
             if (toggleButton && filterSection) {
                 const hasActiveFilters = <?= (!empty($filtro_nome) || !empty($filtro_status) || !empty($filtro_mese) || !empty($filtro_anno)) ? 'true' : 'false' ?>;
-                
+
                 if (hasActiveFilters) {
                     filterSection.style.display = 'block';
                     toggleButton.classList.add('active');
                     toggleButton.innerHTML = '<i class="fa-solid fa-sliders"></i> Nascondi Filtri <span class="filter-count" id="filter-count"></span>';
                     updateFilterCount();
                 }
-                
+
                 toggleButton.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    
+
                     if (filterSection.style.display === 'none' || !filterSection.style.display) {
                         filterSection.style.display = 'block';
                         filterSection.style.opacity = '0';
                         filterSection.style.transform = 'translateY(-10px)';
-                        
+
                         setTimeout(() => {
                             filterSection.style.transition = 'all 0.3s ease';
                             filterSection.style.opacity = '1';
                             filterSection.style.transform = 'translateY(0)';
                         }, 10);
-                        
+
                         toggleButton.classList.add('active');
                         toggleButton.innerHTML = '<i class="fa-solid fa-sliders"></i> Nascondi Filtri <span class="filter-count" id="filter-count"></span>';
                         updateFilterCount();
@@ -469,22 +479,22 @@ $months = [
                         filterSection.style.transition = 'all 0.3s ease';
                         filterSection.style.opacity = '0';
                         filterSection.style.transform = 'translateY(-10px)';
-                        
+
                         setTimeout(() => {
                             filterSection.style.display = 'none';
                         }, 300);
-                        
+
                         toggleButton.classList.remove('active');
                         toggleButton.innerHTML = '<i class="fa-solid fa-sliders"></i> Filtri <span class="filter-count" id="filter-count"></span>';
                         updateFilterCount();
                     }
                 });
             }
-            
+
             function updateFilterCount() {
                 const activeFilters = document.querySelectorAll('.filter-tag').length;
                 const countElement = document.getElementById('filter-count');
-                
+
                 if (countElement) {
                     if (activeFilters > 0) {
                         countElement.textContent = activeFilters;
@@ -494,7 +504,7 @@ $months = [
                     }
                 }
             }
-            
+
             filterInputs.forEach(input => {
                 if (input && input.type === 'text') {
                     input.addEventListener('input', function() {
@@ -509,7 +519,7 @@ $months = [
                     });
                 }
             });
-            
+
             const clearBtn = document.getElementById('pulisci-filtri');
             if (clearBtn) {
                 clearBtn.addEventListener('click', function(e) {
@@ -517,22 +527,22 @@ $months = [
                     clearAllFilters();
                 });
             }
-            
+
             const downloadBtn = document.getElementById('download-csv');
             if (downloadBtn) {
                 downloadBtn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    
+
                     const params = new URLSearchParams(window.location.search);
                     const csvUrl = 'includes/functions/csv-export.php?' + params.toString();
-                    
+
                     window.location.href = csvUrl;
                 });
             }
-            
+
             updateFilterCount();
         });
-        
+
         function clearAllFilters() {
             window.location.href = 'leads.php';
         }

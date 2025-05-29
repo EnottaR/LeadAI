@@ -16,7 +16,7 @@
     <textarea name="message" required></textarea>
 
     <!-- client_id -->
-    <input type="hidden" name="clients_id" value="3">
+    <input type="hidden" name="clients_id" value="7">
 
     <button type="submit">INVIA</button>
 </form>

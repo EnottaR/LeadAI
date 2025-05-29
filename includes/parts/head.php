@@ -5,9 +5,7 @@ session_start();
     <div class="app-header-sinistra">
         <span id="menu-toggle" class="app-icon"></span>
         <p class="app-nome" style="margin-right: 5px;">LeadAI</p>
-		<!-- controllo di versione, rimuovere al termine -->
-        <p style="font-size: 10px; color: var(--secondary-color); align-self: flex-end; margin: 0 15px 5px 0;">Ver. 0.9a  - Cockatrice Build</p>
-		<!-- controllo di versione, rimuovere al termine -->
+        <p style="font-size: 10px; color: var(--secondary-color); align-self: flex-end; margin: 0 15px 5px 0;">Ver. 0.9b  - Kobold Build</p>
         <!-- <div class="search-wrapper">
             <input class="search-input" type="text" placeholder="Cerca">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor"

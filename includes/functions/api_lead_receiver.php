@@ -2,7 +2,7 @@
 /**
  * API Lead Receiver - Endpoint per collegare LeadAI a qualsiasi form
  * LeadAI Project - 2025
- * Fix CORS per MGVision integration - Versione Corretta
+ * Fix del CORS già implementato
  */
 
 date_default_timezone_set('Europe/Rome');
