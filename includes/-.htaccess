@@ -1,0 +1,9 @@
+# Impedisce l'accesso a tutti i file PHP di default
+<FilesMatch ".*">
+    Require all denied
+</FilesMatch>
+
+# Consente l'accesso solo a settings-update.php, update_status.php e csv-export.php
+<FilesMatch "(settings-update\.php|update-status\.php|csv-export\.php|new-lead-alert\.php)">
+    Require all granted
+</FilesMatch>
