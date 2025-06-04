@@ -1,36 +1,208 @@
 <?php
-// Il db nel server ha una discrepanza nell'orario
-// Potrebbe essere necessario aggiornare direttamente il date_format del server
-// Settando il timezone in Europa riesco ad avvicinarmi quanto posso, ma i lead sono segnati con orari non veri, 1 ora indietro
+/**
+ * LeadAI - Enhanced Lead Receiver
+ * Versione migliorata per supportare integrazione universale
+ * Supporta mappatura dinamica dei campi e compatibilità estesa
+ */
+
+// Imposta il timezone
 date_default_timezone_set('Europe/Rome');
 
 $pdo = require_once 'db.php';
 
-function getClientIP() {
-    // Pesco l'ip dell'utente e verifico se è proxato oppure dietro un bilanciatore di carico
-    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        // necessario: rilevo più indirizzi IP? Prendo solo il primo per valido
-        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-    } else {
-        // Nessun proxy, vado con l'IP remoto
-        $ip = $_SERVER['REMOTE_ADDR'];
+// Headers per CORS (supporto integrazioni cross-domain)
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+
+// Gestione richieste OPTIONS (preflight CORS)
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
+/**
+ * Classe per gestire la mappatura dinamica dei campi
+ */
+class LeadFieldMapper {
+    
+    // Mappatura estesa dei campi
+    private $fieldMapping = [
+        // NOME
+        'nome' => 'first_name',
+        'name' => 'first_name',
+        'first_name' => 'first_name',
+        'firstname' => 'first_name',
+        'customer_name' => 'first_name',
+        'client_name' => 'first_name',
+        'user_name' => 'first_name',
+        'your_name' => 'first_name',
+        'contact_name' => 'first_name',
+        
+        // COGNOME
+        'cognome' => 'surname',
+        'surname' => 'surname', 
+        'last_name' => 'surname',
+        'lastname' => 'surname',
+        'customer_surname' => 'surname',
+        'family_name' => 'surname',
+        
+        // EMAIL
+        'email' => 'email',
+        'mail' => 'email',
+        'e_mail' => 'email',
+        'e-mail' => 'email',
+        'contact_email' => 'email',
+        'customer_email' => 'email',
+        'your_email' => 'email',
+        'email_address' => 'email',
+        
+        // TELEFONO
+        'phone' => 'phone',
+        'telefono' => 'phone',
+        'tel' => 'phone',
+        'telephone' => 'phone',
+        'phone_number' => 'phone',
+        'mobile' => 'phone',
+        'cellulare' => 'phone',
+        'contact_phone' => 'phone',
+        
+        // MESSAGGIO
+        'message' => 'message',
+        'messaggio' => 'message',
+        'msg' => 'message',
+        'description' => 'message',
+        'note' => 'message',
+        'notes' => 'message',
+        'comments' => 'message',
+        'customer_message' => 'message',
+        'inquiry' => 'message',
+        'details' => 'message',
+        'request' => 'message',
+        'content' => 'message'
+    ];
+    
+    /**
+     * Mappa i dati del form nel formato standard LeadAI
+     */
+    public function mapFields($inputData) {
+        $mappedData = [
+            'first_name' => '',
+            'surname' => '',
+            'email' => '',
+            'phone' => '',
+            'message' => '',
+            'clients_id' => $inputData['clients_id'] ?? 0,
+            'retURL' => $inputData['retURL'] ?? ''
+        ];
+        
+        // Log dei dati ricevuti per debug
+        error_log("LeadAI - Dati ricevuti: " . json_encode($inputData));
+        
+        // Mappa i campi conosciuti
+        foreach ($inputData as $fieldName => $fieldValue) {
+            $cleanFieldName = strtolower(trim($fieldName));
+            
+            if (isset($this->fieldMapping[$cleanFieldName])) {
+                $standardField = $this->fieldMapping[$cleanFieldName];
+                $mappedData[$standardField] = trim($fieldValue);
+            }
+        }
+        
+        // Gestione intelligente del nome completo
+        if (empty($mappedData['first_name']) && empty($mappedData['surname'])) {
+            foreach ($inputData as $fieldName => $fieldValue) {
+                $cleanFieldName = strtolower($fieldName);
+                
+                // Cerca campi che potrebbero contenere nome completo
+                if ((strpos($cleanFieldName, 'name') !== false || 
+                     strpos($cleanFieldName, 'nome') !== false) &&
+                    strpos($fieldValue, ' ') !== false) {
+                    
+                    $nameParts = explode(' ', trim($fieldValue), 2);
+                    $mappedData['first_name'] = $nameParts[0];
+                    $mappedData['surname'] = $nameParts[1] ?? 'N/A';
+                    break;
+                }
+            }
+        }
+        
+        // Fallback: se cognome vuoto, usa N/A
+        if (empty($mappedData['surname'])) {
+            $mappedData['surname'] = 'N/A';
+        }
+        
+        // Concatena tutti i campi non mappati nel messaggio (opzionale)
+        $unmappedFields = [];
+        foreach ($inputData as $fieldName => $fieldValue) {
+            $cleanFieldName = strtolower(trim($fieldName));
+            
+            // Salta i campi di sistema e quelli già mappati
+            if (!in_array($fieldName, ['clients_id', 'retURL', 'csrf_token', 'form_timestamp']) &&
+                !isset($this->fieldMapping[$cleanFieldName]) &&
+                !empty($fieldValue)) {
+                
+                $unmappedFields[] = ucfirst(str_replace('_', ' ', $fieldName)) . ": " . $fieldValue;
+            }
+        }
+        
+        // Aggiungi campi non mappati al messaggio se presenti
+        if (!empty($unmappedFields) && !empty($mappedData['message'])) {
+            $mappedData['message'] .= "\n\n--- Informazioni aggiuntive ---\n" . implode("\n", $unmappedFields);
+        } elseif (!empty($unmappedFields) && empty($mappedData['message'])) {
+            $mappedData['message'] = "Informazioni aggiuntive:\n" . implode("\n", $unmappedFields);
+        }
+        
+        // Log dei dati mappati per debug
+        error_log("LeadAI - Dati mappati: " . json_encode($mappedData));
+        
+        return $mappedData;
     }
     
-    // followup della riga 11
-    if (strpos($ip, ',') !== false) {
-        $ip = explode(',', $ip)[0];
+    /**
+     * Valida i dati mappati
+     */
+    public function validateMappedData($mappedData) {
+        $errors = [];
+        
+        if (empty($mappedData['clients_id']) || !is_numeric($mappedData['clients_id'])) {
+            $errors[] = "Client ID mancante o non valido";
+        }
+        
+        if (empty($mappedData['email']) || !filter_var($mappedData['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors[] = "Email mancante o non valida";
+        }
+        
+        if (empty($mappedData['first_name'])) {
+            $errors[] = "Nome mancante";
+        }
+        
+        return $errors;
+    }
+}
+
+/**
+ * Funzioni helper
+ */
+function getClientIP() {
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        if (strpos($ip, ',') !== false) {
+            $ip = explode(',', $ip)[0];
+        }
+    } else {
+        $ip = $_SERVER['REMOTE_ADDR'];
     }
     return trim($ip);
 }
 
-// Qui intercetto l'urser agent del browser e lo stampo tra i lead
 function getBrowserInfo() {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Non disponibile';
     
-    // Se ho commesso degli errori, l'user agent è "sconosciuto"
     $browser = 'Sconosciuto';
     $os = 'Sconosciuto';
     
+    // Rilevamento browser
     if (strpos($userAgent, 'Chrome') !== false) {
         $browser = 'Chrome';
     } elseif (strpos($userAgent, 'Firefox') !== false) {
@@ -39,11 +211,9 @@ function getBrowserInfo() {
         $browser = 'Safari';
     } elseif (strpos($userAgent, 'Edge') !== false) {
         $browser = 'Edge';
-    } elseif (strpos($userAgent, 'Opera') !== false) {
-        $browser = 'Opera';
     }
     
-    // Recupero i dati OS
+    // Rilevamento OS
     if (strpos($userAgent, 'Windows') !== false) {
         $os = 'Windows';
     } elseif (strpos($userAgent, 'Mac') !== false) {
@@ -59,107 +229,153 @@ function getBrowserInfo() {
     return $browser . ' su ' . $os;
 }
 
-// NUOVA FUNZIONE: Determina la tipologia del lead basata sull'URL di origine
-function getLeadType($referer_url) {
-    if (empty($referer_url)) {
+function getLeadType($refererUrl) {
+    if (empty($refererUrl)) {
         return 'Semplice/Organico';
     }
     
-    // Controlla se l'URL contiene /gad dopo il dominio
-    if (preg_match('/\.com\/gad/i', $referer_url)) {
+    // Verifica se contiene parametri Google Ads
+    if (preg_match('/[?&](gclid|utm_source=google|utm_medium=cpc)/i', $refererUrl) ||
+        preg_match('/\.com\/gad/i', $refererUrl)) {
         return 'Google ADS';
     }
     
     return 'Semplice/Organico';
 }
 
-$name = $_POST['name'] ?? '';
-$surname = $_POST['surname'] ?? '';
-$email = $_POST['email'] ?? '';
-$phone = $_POST['phone'] ?? '';
-$message = $_POST['message'] ?? '';
-$ip = getClientIP();
-$browser_info = getBrowserInfo();
-$lead_source = $_SERVER['HTTP_REFERER'] ?? 'Non disponibile'; // URL completo della pagina
-$clients_id = $_POST['clients_id'] ?? ''; // clients_id passato dal form
-
-// NUOVA VARIABILE: Determina la tipologia del lead
-$lead_type = getLeadType($lead_source);
-
-// verifico se il cliente esiste in base al clients_id
-$queryClient = "SELECT id, encryption_key, email FROM clients WHERE id = :clients_id LIMIT 1";
-$stmtClient = $pdo->prepare($queryClient);
-$stmtClient->bindParam(':clients_id', $clients_id);
-$stmtClient->execute();
-$client = $stmtClient->fetch(PDO::FETCH_ASSOC);
-
-if ($client) {
-    // cifratura dei dati sensibili (telefono e messaggio)
+// PROCESSING PRINCIPALE
+try {
+    // Inizializza il mapper
+    $mapper = new LeadFieldMapper();
+    
+    // Determina il metodo di invio e raccogli i dati
+    $inputData = [];
+    
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Supporta sia form-data che JSON
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        
+        if (strpos($contentType, 'application/json') !== false) {
+            // Dati JSON (da API/JavaScript)
+            $jsonInput = file_get_contents('php://input');
+            $inputData = json_decode($jsonInput, true) ?: [];
+        } else {
+            // Dati form standard
+            $inputData = $_POST;
+        }
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        // Supporta anche GET per testing
+        $inputData = $_GET;
+    }
+    
+    // Mappa i campi
+    $mappedData = $mapper->mapFields($inputData);
+    
+    // Valida i dati
+    $validationErrors = $mapper->validateMappedData($mappedData);
+    
+    if (!empty($validationErrors)) {
+        http_response_code(400);
+        
+        // Response in JSON se richiesto
+        if (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'errors' => $validationErrors,
+                'message' => 'Dati non validi: ' . implode(', ', $validationErrors)
+            ]);
+        } else {
+            echo "Errore: " . implode(', ', $validationErrors);
+        }
+        exit;
+    }
+    
+    // Procedi con l'inserimento del lead (usa la logica esistente)
+    $clients_id = $mappedData['clients_id'];
+    $first_name = $mappedData['first_name'];
+    $surname = $mappedData['surname'];
+    $email = $mappedData['email'];
+    $phone = $mappedData['phone'];
+    $message = $mappedData['message'];
+    $ip = getClientIP();
+    $browser_info = getBrowserInfo();
+    $lead_source = $_SERVER['HTTP_REFERER'] ?? 'Direct Access';
+    $lead_type = getLeadType($lead_source);
+    
+    // Verifica esistenza cliente
+    $queryClient = "SELECT id, encryption_key, email FROM clients WHERE id = :clients_id LIMIT 1";
+    $stmtClient = $pdo->prepare($queryClient);
+    $stmtClient->bindParam(':clients_id', $clients_id);
+    $stmtClient->execute();
+    $client = $stmtClient->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$client) {
+        http_response_code(404);
+        
+        if (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Cliente non trovato'
+            ]);
+        } else {
+            echo "Errore: Cliente non trovato";
+        }
+        exit;
+    }
+    
+    // Crittografia dati sensibili
     $encryption_key = $client['encryption_key'];
-    $iv = openssl_random_pseudo_bytes(16); // IV casuale di 16 byte, autogenerato
-
-    // dati sensibili cifrati
+    $iv = openssl_random_pseudo_bytes(16);
+    
     $encryptedPhone = openssl_encrypt($phone, 'aes-256-cbc', $encryption_key, 0, $iv);
     $encryptedMessage = openssl_encrypt($message, 'aes-256-cbc', $encryption_key, 0, $iv);
-
-    // Check se la persona già esiste nel db
+    
+    // Gestione persona (esistente o nuova)
     $queryPersonas = "SELECT id FROM personas WHERE email = :email LIMIT 1";
     $stmtPersonas = $pdo->prepare($queryPersonas);
     $stmtPersonas->bindParam(':email', $email);
     $stmtPersonas->execute();
     $persona = $stmtPersonas->fetch(PDO::FETCH_ASSOC);
-
-    // Se esiste, uso il suo personas_id esistente
+    
     if ($persona) {
         $personas_id = $persona['id'];
     } else {
-        // se la persona non esiste, la inserisco
         $queryInsertPersonas = "INSERT INTO personas (name, surname, email, created_at) 
-                                 VALUES (:name, :surname, :email, NOW())";
+                                VALUES (:name, :surname, :email, NOW())";
         $stmtInsertPersonas = $pdo->prepare($queryInsertPersonas);
-        $stmtInsertPersonas->bindParam(':name', $name);
+        $stmtInsertPersonas->bindParam(':name', $first_name);
         $stmtInsertPersonas->bindParam(':surname', $surname);
         $stmtInsertPersonas->bindParam(':email', $email);
-
+        
         if ($stmtInsertPersonas->execute()) {
             $personas_id = $pdo->lastInsertId();
         } else {
-            echo "errore nell'inserimento della persona.";
-            exit;
+            throw new Exception("Errore nell'inserimento della persona");
         }
     }
-
-    // CORREZIONE: Estrai solo il dominio per il controllo del sito web, 
-    // ma mantieni l'URL completo per lead_source_url
-    $refererDomain = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST);
     
+    // Verifica website del cliente
+    $refererDomain = parse_url($lead_source, PHP_URL_HOST);
     if ($refererDomain) {
-        // Pulisco il dominio dal www se presente
         $refererDomain = preg_replace('/^www\./', '', $refererDomain);
-    } else {
-        echo "errore: nessun referer trovato.";
-        exit;
     }
-
-    // Controllo che il sito inserito sia di proprietà del cliente usando SOLO il dominio
+    
     $queryWebsite = "SELECT id, name, url FROM websites WHERE url LIKE :url AND clients_id = :clients_id LIMIT 1";
     $stmtWebsite = $pdo->prepare($queryWebsite);
-
-    // Usa la wildcard per LIKE nel parametro, li wrappo con % intorno al valore,
-    // questo nel caso per qualche assurdo motivo l'url mi viene passato "smontato"
     $likeUrl = '%' . $refererDomain . '%';
-
     $stmtWebsite->bindParam(':url', $likeUrl);
     $stmtWebsite->bindParam(':clients_id', $client['id']);
     $stmtWebsite->execute();
     $website = $stmtWebsite->fetch(PDO::FETCH_ASSOC);
-
+    
     if ($website) {
-        // CORREZIONE: Salva l'URL COMPLETO (non solo il dominio) in lead_source_url
+        // Inserisci il lead
         $insertLeadQuery = "INSERT INTO leads (phone, message, ip, status_id, created_at, clients_id, personas_id, websites_id, iv, lead_source_url, lead_type)
-                            VALUES (:phone, :message, :ip, 1, NOW(), :clients_id, :personas_id, :websites_id, :iv, :lead_source_url, :lead_type)";
+                           VALUES (:phone, :message, :ip, 1, NOW(), :clients_id, :personas_id, :websites_id, :iv, :lead_source_url, :lead_type)";
         $stmtLead = $pdo->prepare($insertLeadQuery);
-
+        
         $stmtLead->bindParam(':phone', $encryptedPhone);
         $stmtLead->bindParam(':message', $encryptedMessage);
         $stmtLead->bindParam(':ip', $ip);
@@ -167,66 +383,73 @@ if ($client) {
         $stmtLead->bindParam(':personas_id', $personas_id);
         $stmtLead->bindParam(':websites_id', $website['id']);
         $stmtLead->bindParam(':iv', $iv);
-        $stmtLead->bindParam(':lead_source_url', $lead_source); // URL COMPLETO
+        $stmtLead->bindParam(':lead_source_url', $lead_source);
         $stmtLead->bindParam(':lead_type', $lead_type);
-
+        
         if ($stmtLead->execute()) {
-            echo "lead inserito con successo!";
+            $lead_id = $pdo->lastInsertId();
             
-            // EMAIL DI NOTIFICA AL PROPRIETARIO DELL'ACCOUNT
-            // Dovrebbe funzionare correttamente, sto effettuando test ma non mi capacito:
-            // mg-adv.com ha un mailer? E' una cosa abbastanza comune che mi ritrovo con i siti in production,
-            // alcuni form a volte non caricano l'header della mail e vengono bloccati oppure finiscono in spam
+            // Email di notifica
             $client_email = $client['email'];
             $website_name = $website['name'];
             
             $subject = "Nuovo LEAD - " . $website_name . " (" . $lead_type . ")";
-            
-            $email_body = "Questi i dati inseriti nel modulo presente alla pagina " . $lead_source . " da utente con indirizzo IP: " . $ip . " e browser/sistema operativo " . $browser_info . "\n\n";
+            $email_body = "Nuovo lead ricevuto da " . $lead_source . "\n\n";
             $email_body .= "🎯 TIPOLOGIA LEAD: " . $lead_type . "\n";
             $email_body .= "🌐 URL ORIGINE: " . $lead_source . "\n\n";
-            $email_body .= "Dati Inseriti:\n";
-            $email_body .= "lead_source: " . $lead_source . "\n";
-            $email_body .= "first_name: " . $name . "\n";
-            $email_body .= "last_name: " . $surname . "\n";
-            $email_body .= "email: " . $email . "\n";
-            $email_body .= "phone: " . $phone . "\n";
-            $email_body .= "description: " . $message . "\n";
-            $email_body .= "privacy: on\n\n";
-            $email_body .= "---\n";
-            $email_body .= "Questo messaggio è stato generato automaticamente da LeadAI.\n";
-            $email_body .= "Per gestire questo lead, accedi al tuo pannello di controllo.";
+            $email_body .= "Dati:\n";
+            $email_body .= "Nome: " . $first_name . " " . $surname . "\n";
+            $email_body .= "Email: " . $email . "\n";
+            $email_body .= "Telefono: " . $phone . "\n";
+            $email_body .= "Messaggio: " . $message . "\n\n";
+            $email_body .= "IP: " . $ip . "\n";
+            $email_body .= "Browser: " . $browser_info . "\n";
             
-            $headers = array();
-            $headers[] = "MIME-Version: 1.0";
-            $headers[] = "Content-type: text/plain; charset=UTF-8";
-            $headers[] = "From: LeadAI System <noreply@mg-adv.com>";
-            $headers[] = "Reply-To: noreply@mg-adv.com";
-            $headers[] = "Return-Path: noreply@mg-adv.com";
-            $headers[] = "X-Mailer: PHP/" . phpversion();
-            $headers[] = "X-Priority: 1";
-            $headers[] = "X-MSMail-Priority: High";
-            $headers[] = "Importance: High";
+            $headers = "From: LeadAI System <noreply@mg-adv.com>\r\n";
+            $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
             
-            $headers_string = implode("\r\n", $headers);
+            mail($client_email, $subject, $email_body, $headers);
             
-            $mail_sent = mail($client_email, $subject, $email_body, $headers_string);
-            
-            if ($mail_sent) {
-                echo "\nEmail di notifica inviata con successo a: " . $client_email;
-                error_log("LeadAI: Email inviata a " . $client_email . " - " . date('Y-m-d H:i:s'));
+            // Response di successo
+            if (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'lead_id' => $lead_id,
+                    'message' => 'Lead inserito con successo',
+                    'lead_type' => $lead_type
+                ]);
             } else {
-                echo "\nErrore nell'invio dell'email di notifica.";
-                error_log("LeadAI: Errore invio email a " . $client_email . " - " . date('Y-m-d H:i:s'));
+                echo "Lead inserito con successo! ID: " . $lead_id;
+                
+                // Redirect se specificato
+                if (!empty($mappedData['retURL'])) {
+                    header("Location: " . $mappedData['retURL']);
+                    exit;
+                }
             }
             
         } else {
-            echo "errore nell'inserimento del lead.";
+            throw new Exception("Errore nell'inserimento del lead");
         }
+        
     } else {
-        echo "il sito non appartiene al cliente.";
+        throw new Exception("Il sito non appartiene al cliente o non è verificato");
     }
-} else {
-    echo "cliente non trovato.";
+    
+} catch (Exception $e) {
+    error_log("LeadAI Error: " . $e->getMessage());
+    
+    http_response_code(500);
+    
+    if (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'message' => 'Errore del server: ' . $e->getMessage()
+        ]);
+    } else {
+        echo "Errore: " . $e->getMessage();
+    }
 }
 ?>
