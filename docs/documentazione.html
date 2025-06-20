@@ -1,0 +1,175 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Documentazione | LeadAI</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link href="https://fonts.googleapis.com/css?family=Nunito+Sans:300,400,600,700,800,900" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/styles/default.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
+
+  <link rel="stylesheet" href="assets/css/global.css">
+  <link rel="stylesheet" href="assets/css/doc.css">
+  <link rel="author" href="humans.txt">
+</head>
+
+<body>
+  <div class="doc__bg"></div>
+  <nav class="header">
+    <h1 class="logo"><span class="logo__thin">LeadAI</span>Doc</h1>
+
+  </nav>
+  <div class="wrapper">
+    <aside class="doc__nav">
+      <ul>
+        <li class="js-btn selected">Inizia</li>
+        <li class="js-btn">Configurazione</li>
+        <li class="js-btn">Scorciatoie</li>
+        <li class="js-btn">Changelog</li>
+      </ul>
+    </aside>
+    <article class="doc__content">
+      <section class="js-section">
+        <h3 class="section__title">Get Started</h3>
+        <p>Learn how to configure settings for Scribbler, such as your syntax highlighting preference and the default
+          saving folder location.</p>
+        <h3 class="section__title">Installation</h3>
+        <div class="code__block code__block--notabs">
+          <pre class="code code--block">
+        <code class="hljs json">
+                $ scribbler  ——config
+                  {
+                    “encryption”: true, 
+                    “highlighting“: true,
+                    “prettyTable”: false,
+                    “font”: [“Helvetica”, “sans-serif”],
+                    “folder”: “~/Desktop“
+                  }
+              </code>
+            </pre>
+        </div>
+      </section>
+      <section class="js-section">
+        <h3 class="section__title">Configuration</h3>
+        <p>Learn how to configure settings for Scribbler, such as your syntax highlighting preference and the default
+          saving folder location.</p>
+        <table id="customers">
+          <tr>
+            <th>Options</th>
+            <th>Value</th>
+            <th>Default</th>
+          </tr>
+          <tr>
+            <td>encryption</td>
+            <td>encrypt all notes before saving. If turned on, it requires password to open the file.</td>
+            <td>false</td>
+          </tr>
+          <tr>
+            <td>highlighting</td>
+            <td>Show syntax highlight on markdown text.</td>
+            <td>true</td>
+          </tr>
+          <tr>
+            <td>prettyTable</td>
+            <td>Render table with Scribbler’s pretty table style.</td>
+            <td>true</td>
+          </tr>
+        </table>
+        <p>Malis percipitur an pro. Pro aperiam persequeris at, at sonet sensibus mei, id mea postulant definiebas
+          concludaturque. Id qui malis abhorreant, mazim melius quo et. At eam altera dolorum, case dicant lobortis ius
+          te, ad vel affert oportere reprehendunt. Quo no verterem deseruisse, mea brute postea te, ne per tacimates
+          suavitate vituperatoribus.</p>
+        <hr />
+      </section>
+      <section class="js-section">
+        <h3 class="section__title">Keybindings</h3>
+        <p>Lorem ipsum dolor sit amet, scripta tibique indoctum sit ei, mel inani aeterno ad. Facer oratio ex per. At
+          eam movet verear, in sea brute patrioque disputando, usu nonumes torquatos an. Ex his quaerendum intellegebat,
+          ut vel homero accusam. Eum at debet tibique, in vocibus temporibus adversarium sed. Porro verear eu vix, ne
+          usu tation vituperata.</p>
+        <p>Malis percipitur an pro. Pro aperiam persequeris at, at sonet sensibus mei, id mea postulant definiebas
+          concludaturque. Id qui malis abhorreant, mazim melius quo et. At eam altera dolorum, case dicant lobortis ius
+          te, ad vel affert oportere reprehendunt. Quo no verterem deseruisse, mea brute postea te, ne per tacimates
+          suavitate vituperatoribus.</p>
+        <p>Malis percipitur an pro. Pro aperiam persequeris at, at sonet sensibus mei, id mea postulant definiebas
+          concludaturque. Id qui malis abhorreant, mazim melius quo et. At eam altera dolorum, case dicant lobortis ius
+          te, ad vel affert oportere reprehendunt. Quo no verterem deseruisse, mea brute postea te, ne per tacimates
+          suavitate vituperatoribus.</p>
+        <hr />
+      </section>
+      <section class="js-section">
+        <h3 class="section__title">Changelog</h3>
+<div class="changelog-container">
+    <div class="changelog-entry">
+        <div class="changelog-date">04 Febbraio 2025</div>
+        <div class="changelog-text">
+            <div class="changelog-nuovo">Novità</div>
+            <p>- Aggiunte prime notifiche email (Nuovo lead, cambio di stato del lead)</p>
+			            <div class="changelog-todo">Da implementare</div>
+            <p>- Notifiche email meno impersonali, verranno aggiunti template più user friendly</p>
+			<p>- Notifiche SMS, rimani aggiornato in ogni momento sullo stato dei tuoi lead!</p>
+            <div class="changelog-bugfix">Bugfix</div>
+            <p>- Risolto il bug con la campanella notifica</p>
+            <p>- Bugfix minori alla pagina dashboard</p>
+        </div>
+    </div>
+
+    <div class="changelog-entry">
+        <div class="changelog-date">02 Febbraio 2025</div>
+        <div class="changelog-text">
+            <div class="changelog-nuovo">Novità</div>
+            <p>- Rielaborate le funzioni della pagina iniziale della dashboard, ora i lead sono disponibili nella pagina iniziale </p>
+            <p>- Le voci nella pagina iniziale della dashboard sono ora più "amichevoli"</p>
+        </div>
+    </div>
+	
+	    <div class="changelog-entry">
+        <div class="changelog-date">30 Gennaio 2025</div>
+        <div class="changelog-text">
+            <div class="changelog-bugfix" style="margin-top: 0px;">Bugfix</div>
+            <p>- Risolti i problemi di connessione con il database dei lead </p>
+        </div>
+    </div>
+			    <div class="changelog-entry">
+        <div class="changelog-date">23 Gennaio 2025</div>
+        <div class="changelog-text">
+            <div class="changelog-nuovo">Novità</div>
+            <p>- Nuova pagina lead, contenete tutti i messaggi ricevuti, gli indirizzi e gli status</p>
+			<p>- Aggiunta la selezione dello status del lead</p>
+			            <div class="changelog-bugfix">Bugfix</div>
+            <p>- Risolti bug minori nella pagina Impostazioni</p>
+        </div>
+    </div>
+	<div class="changelog-entry">
+        <div class="changelog-date">16 Gennaio 2025</div>
+        <div class="changelog-text">
+            <div class="changelog-nuovo">Novità</div>
+            <p>- Nuova pagina Impostazioni e nuovo layout per la dashboard</p>
+			<p>- Modalità dark abilitata!</p>
+			<p>- I cinque lead più recenti sono ora disponibili anche sulla splashpage</p>
+        </div>
+    </div>
+		<div class="changelog-entry">
+        <div class="changelog-date">13 Gennaio 2025</div>
+        <div class="changelog-text">
+            <div class="changelog-nuovo">Novità</div>
+            <p>- LeadAI lascia la pre-alpha stage e passa alla versione alpha! 🎉</p>
+        </div>
+    </div>
+</div>
+
+
+      </section>
+    </article>
+  </div>
+
+  <footer class="footer">LeadAI - alpha build stage (ver 0.0.7)</footer>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <script src="assets/js/doc.js"></script>
+</body>
+
+</html>
