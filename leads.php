@@ -446,8 +446,8 @@ $months = [
     <div id="notification-container"></div>
     <script src="assets/js/dashboard.js"></script>
     <script src="assets/js/leads.js"></script>
-
-    <script>
+	
+	    <script>
         document.addEventListener('DOMContentLoaded', function() {
             const filterSection = document.getElementById('filter-section');
             const toggleButton = document.getElementById('toggle-filters');
