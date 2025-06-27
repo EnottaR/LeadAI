@@ -2124,6 +2124,54 @@ td.lead-messaggio {
     font-size: 14px;
 }
 
+.quality-stars-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.quality-stars {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+}
+
+.quality-star {
+    font-size: 18px;
+    color: #e5e7eb;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.quality-star:hover {
+    transform: scale(1.1);
+}
+
+.quality-star.active {
+    color: #fbbf24;
+    text-shadow: 0 0 4px rgba(251, 191, 36, 0.5);
+}
+
+.quality-star.hover-preview {
+    color: #fcd34d;
+    transform: scale(1.05);
+}
+
+.quality-status-text {
+    font-size: 11px;
+    color: var(--secondary-color);
+    font-weight: 600;
+    text-align: center;
+    min-height: 16px;
+    font-style: italic;
+}
+
+.quality-select {
+    display: none !important;
+}
+
 .integration-layout {
     display: flex;
     gap: 30px;
