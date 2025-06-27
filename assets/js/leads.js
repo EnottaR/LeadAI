@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
+    initQualityStars();
+	validatePhoneNumbers();
 
     document.querySelectorAll(".status-select").forEach((select) => {
         updateStatusColor(select);
@@ -25,6 +27,19 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
     });
+	
+	function validatePhoneNumbers() {
+    const phoneColumns = document.querySelectorAll('.leads-table tbody tr td:nth-child(5)');
+    
+    phoneColumns.forEach(cell => {
+        const phoneText = cell.textContent.trim();
+        
+        if (/[^0-9\s\+]/.test(phoneText) && phoneText !== '') {
+            cell.innerHTML = '<span style="color: #dc3545; font-weight: bold;">Errore</span>';
+            cell.style.backgroundColor = '#ffeaea';
+        }
+    });
+}
 
     function updateStatusColor(selectElement) {
         selectElement.classList.remove(...selectElement.classList);
@@ -38,11 +53,156 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    initializeDeleteFunctionality();
 });
 
-// Info del browser, lato client
-// meno solido e più propenso a crollare per motivo x, come ad esempio una versione Edge MOLTO vecchia.
-// Meglio salvare le info nel db, valutare se creare campi appositi, se necessario.
+function initQualityStars() {
+    const qualitySelects = document.querySelectorAll('.quality-select');
+    
+    qualitySelects.forEach(select => {
+        const leadId = select.getAttribute('data-lead-id');
+        const currentValue = parseInt(select.value) || 0;
+        
+        const starsContainer = document.createElement('div');
+        starsContainer.className = 'quality-stars-container';
+        starsContainer.setAttribute('data-lead-id', leadId);
+        
+        const starsDiv = document.createElement('div');
+        starsDiv.className = 'quality-stars';
+        
+        for (let i = 1; i <= 5; i++) {
+            const star = document.createElement('span');
+            star.className = 'quality-star';
+            star.innerHTML = '★';
+            star.setAttribute('data-rating', i);
+            
+            if (i <= currentValue) {
+                star.classList.add('active');
+            }
+            
+            star.addEventListener('mouseenter', function() {
+                highlightStars(starsDiv, i);
+                updateStatusText(starsContainer, i);
+            });
+            
+            star.addEventListener('click', function() {
+                setQualityRating(leadId, i, starsContainer);
+            });
+            
+            starsDiv.appendChild(star);
+        }
+        
+        const statusText = document.createElement('div');
+        statusText.className = 'quality-status-text';
+        statusText.textContent = getQualityText(currentValue);
+        
+starsContainer.addEventListener('mouseleave', function() {
+    const savedValue = parseInt(starsContainer.getAttribute('data-current-value')) || currentValue;
+    resetStarsToCurrentValue(starsDiv, savedValue);
+    updateStatusText(starsContainer, savedValue);
+});
+        
+        starsContainer.appendChild(starsDiv);
+        starsContainer.appendChild(statusText);
+        
+        select.parentNode.replaceChild(starsContainer, select);
+    });
+}
+
+function highlightStars(starsDiv, rating) {
+    const stars = starsDiv.querySelectorAll('.quality-star');
+    
+    stars.forEach((star, index) => {
+        star.classList.remove('hover-preview', 'active');
+        if (index < rating) {
+            star.classList.add('hover-preview');
+        }
+    });
+}
+
+function resetStarsToCurrentValue(starsDiv, currentValue) {
+    const container = starsDiv.parentNode;
+    const actualCurrentValue = container.getAttribute('data-current-value') || currentValue;
+    const stars = starsDiv.querySelectorAll('.quality-star');
+    
+    stars.forEach((star, index) => {
+        star.classList.remove('hover-preview');
+        if (index < actualCurrentValue) {
+            star.classList.add('active');
+        } else {
+            star.classList.remove('active');
+        }
+    });
+    
+    updateStatusText(container, actualCurrentValue);
+}
+
+function updateStatusText(container, rating) {
+    const statusText = container.querySelector('.quality-status-text');
+    statusText.textContent = getQualityText(rating);
+}
+
+function setQualityRating(leadId, rating, container) {
+    const starsDiv = container.querySelector('.quality-stars');
+    const stars = starsDiv.querySelectorAll('.quality-star');
+    
+    stars.forEach((star, index) => {
+        star.classList.remove('hover-preview', 'active');
+        if (index < rating) {
+            star.classList.add('active');
+        }
+    });
+    
+    updateStatusText(container, rating);
+	container.setAttribute('data-current-value', rating);
+	const originalCurrentValue = rating;
+    
+    container.style.transform = 'scale(1.05)';
+    setTimeout(() => {
+        container.style.transform = 'scale(1)';
+    }, 150);
+    
+    fetch('includes/update-quality.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            lead_id: leadId,
+            quality_rating: rating
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showNotification(`✨ Qualità aggiornata: ${getQualityText(rating)}`, 'success');
+        } else {
+            showNotification('⚠️ Errore durante l\'aggiornamento', 'error');
+            resetStarsToCurrentValue(starsDiv, 0);
+            updateStatusText(container, 0);
+        }
+    })
+    .catch(error => {
+        console.error('Errore:', error);
+        showNotification('⚠️ Errore di connessione', 'error');
+        resetStarsToCurrentValue(starsDiv, 0);
+        updateStatusText(container, 0);
+    });
+}
+
+function getQualityText(rating) {
+    const qualityTexts = {
+        0: 'Seleziona',
+        1: 'Spam',
+        2: 'Non in target',
+        3: 'In target ma bassa qualità',
+        4: 'Lead Buono',
+        5: 'Lead Ottimo'
+    };
+    
+    return qualityTexts[rating] || 'Seleziona';
+}
+
 function detectBrowser() {
     const userAgent = navigator.userAgent;
     let browser = 'Sconosciuto';
@@ -81,13 +241,11 @@ function detectOS() {
     return os;
 }
 
-// Funzione per determinare l'origine del lead
 function getLeadTypeFromUrl(url) {
     if (!url || url === 'Non disponibile') {
         return 'Semplice/Organico';
     }
     
-    // Check sull'URL se contiene /gad dopo il .com
     if (url.match(/:\/\/[^\/]+\/gad/i)) {
         return 'Google ADS';
     }
@@ -96,7 +254,6 @@ function getLeadTypeFromUrl(url) {
 }
 
 function openOffCanvas(leadData) {
-    // SICUREZZA
     fetch('includes/functions/decrypt-lead-data.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -162,6 +319,14 @@ function openOffCanvas(leadData) {
                         <span class="data-value">on</span>
                     </div>
                 </div>
+                
+                <!-- PULSANTE ELIMINA AGGIUNTO QUI -->
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--message-box-border); text-align: center;">
+                    <button onclick="deleteLeadFromOffCanvas(${leadData.id}, '${leadData.name}', '${leadData.surname}')" 
+                            style="background-color: #dc3545; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 14px;">
+                        <i class="fas fa-trash" style="margin-right: 8px;"></i>Elimina questo lead
+                    </button>
+                </div>
             </div>`;
 
         const offcanvasTitle = document.querySelector('.offcanvas-header h3');
@@ -190,24 +355,76 @@ function closeOffCanvas() {
     }
 }
 
-// Eliminazione lead
+function deleteLeadFromOffCanvas(leadId, firstName, lastName) {
+    const leadName = `${firstName} ${lastName}`;
+    
+    if (confirm(`Sei sicuro di voler eliminare il lead di ${leadName}?\n\nQuesta azione non può essere annullata.`)) {
+        // Mostra loading sul pulsante
+        const deleteBtn = event.target;
+        const originalText = deleteBtn.innerHTML;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i>Eliminando...';
+        deleteBtn.disabled = true;
+        
+        fetch('includes/functions/delete-lead.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ lead_id: leadId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showNotification('✅ Lead eliminato con successo!', 'success');
+                
+                closeOffCanvas();
+                
+                removeLeadFromTable(leadId);
+                
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+                
+            } else {
+                showNotification('⚠️ ' + data.message, 'error');
+                deleteBtn.innerHTML = originalText;
+                deleteBtn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Errore eliminazione:', error);
+            showNotification('⚠️ Errore di connessione durante l\'eliminazione', 'error');
+            deleteBtn.innerHTML = originalText;
+            deleteBtn.disabled = false;
+        });
+    }
+}
+
+function removeLeadFromTable(leadId) {
+    const rows = document.querySelectorAll('.leads-table tbody tr');
+    rows.forEach(row => {
+        const detailsBtn = row.querySelector('.details-btn');
+        if (detailsBtn) {
+            const onclickAttr = detailsBtn.getAttribute('onclick');
+            if (onclickAttr && onclickAttr.includes(`id: ${leadId}`)) {
+                row.style.transition = 'all 0.3s ease';
+                row.style.opacity = '0';
+                row.style.transform = 'translateX(-20px)';
+                
+                setTimeout(() => {
+                    row.remove();
+                }, 300);
+            }
+        }
+    });
+}
+
 let selectedLeads = new Set();
 let isMultiSelectMode = false;
 
-document.addEventListener("DOMContentLoaded", function () {
-    initializeDeleteFunctionality();
-    
-    document.querySelectorAll(".status-select").forEach((select) => {
-    });
-});
-
 function initializeDeleteFunctionality() {
     addBulkDeleteButtons();
-    
     addSelectionCheckboxes();
-    
-    addSingleDeleteButtons();
-    
     setupDeleteEventListeners();
 }
 
@@ -237,7 +454,6 @@ function addBulkDeleteButtons() {
     headerActions.appendChild(deleteSelectedBtn);
     headerActions.appendChild(cancelSelectBtn);
     
-    // Mostra il pulsante solo se ci sono lead
     const leadsTable = document.querySelector('.leads-table tbody');
     if (leadsTable && leadsTable.children.length > 0) {
         const firstRow = leadsTable.children[0];
@@ -486,24 +702,6 @@ function performDelete(leadIds, type) {
     });
 }
 
-function removeLeadFromTable(leadId) {
-    const checkboxes = document.querySelectorAll('.lead-select-checkbox');
-    checkboxes.forEach(cb => {
-        if (cb.getAttribute('data-lead-id') === leadId.toString()) {
-            const row = cb.closest('tr');
-            if (row) {
-                row.style.transition = 'all 0.3s ease';
-                row.style.opacity = '0';
-                row.style.transform = 'translateX(-20px)';
-                
-                setTimeout(() => {
-                    row.remove();
-                }, 300);
-            }
-        }
-    });
-}
-
 function updateDashboardCounters() {
     if (window.location.pathname.includes('dashboard')) {
         location.reload();
@@ -516,7 +714,7 @@ function checkEmptyTable() {
         if (tableBody && tableBody.children.length === 0) {
             const emptyRow = document.createElement('tr');
             emptyRow.innerHTML = `
-                <td colspan="8" style="text-align: center; padding: 40px; color: var(--secondary-color);">
+                <td colspan="9" style="text-align: center; padding: 40px; color: var(--secondary-color);">
                     <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 15px; opacity: 0.3;"></i><br>
                     Nessun lead disponibile.
                 </td>
@@ -581,3 +779,6 @@ function showNotification(message, type = 'success') {
 window.deleteSingleLead = deleteSingleLead;
 window.deleteSelectedLeads = deleteSelectedLeads;
 window.toggleMultiSelectMode = toggleMultiSelectMode;
+window.openOffCanvas = openOffCanvas;
+window.closeOffCanvas = closeOffCanvas;
+window.deleteLeadFromOffCanvas = deleteLeadFromOffCanvas;
